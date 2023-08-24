@@ -1,0 +1,24 @@
+{
+  "name": "allbot",
+  "version": "1.0.0",
+  "description": "bot for tg",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node ./dist/index.js",
+    "dev": "npm run build && npm run start"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.5.3",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "redis": "^4.6.8",
+    "telegraf": "^4.12.2"
+  }
+}

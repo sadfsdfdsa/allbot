@@ -3,12 +3,12 @@ import 'dotenv/config';
 import { createDB } from './core/db.js';
 import { UserRepository } from './core/repository.js';
 import { createBot } from './core/bot.js';
+const NAME = '@allsuperior_bot';
+const ALL_COMMANDS = ['@all', '/all', NAME];
 const main = async () => {
     const client = await createDB(process.env.REDIS_URI);
     const repository = new UserRepository(client);
     const bot = createBot(process.env.TG_TOKEN);
-    const NAME = '@allsuperior_bot';
-    const ALL_COMMANDS = ['@all', '/all', NAME];
     bot.on(message('text'), async (ctx) => {
         const { message: { from, text, message_id }, chat: { id }, } = ctx;
         await repository.addUsers(id, [from]);

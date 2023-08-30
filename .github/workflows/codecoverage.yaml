@@ -19,4 +19,3 @@ jobs:
             - uses: ArtiomTr/jest-coverage-report-action@v2
               with:
                 output: report-markdown
-                annotations: coverage

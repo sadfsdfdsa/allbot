@@ -8,7 +8,7 @@
     "build": "tsc",
     "start": "node ./dist/index.js",
     "dev": "npm run build && npm run start",
-    "release": "git push evennode main",
+    "release": "npm run build && push evennode main",
     "patch": "npm version patch",
     "test": "jest --detectOpenHandles"
   },

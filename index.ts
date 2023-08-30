@@ -4,20 +4,20 @@ import { createDB } from './core/db.js'
 import { UserRepository } from './core/repository.js'
 import { createBot } from './core/bot.js'
 
+const NAME = '@allsuperior_bot'
+const ALL_COMMANDS = ['@all', '/all', NAME]
+
 const main = async (): Promise<void> => {
   const client = await createDB(process.env.REDIS_URI)
   const repository = new UserRepository(client)
-
   const bot = createBot(process.env.TG_TOKEN)
-
-  const NAME = '@allsuperior_bot'
-  const ALL_COMMANDS = ['@all', '/all', NAME]
 
   bot.on(message('text'), async (ctx) => {
     const {
       message: { from, text, message_id },
       chat: { id },
     } = ctx
+
     await repository.addUsers(id, [from])
 
     const isCallAll = ALL_COMMANDS.some((command) => text.includes(command))
@@ -41,7 +41,6 @@ const main = async (): Promise<void> => {
 
   bot.on(message('left_chat_member'), async (ctx) => {
     console.log('Delete user', ctx.message.left_chat_member.username)
-
     await client.hDel(`${ctx.chat.id}`, `${ctx.message.left_chat_member.id}`)
   })
 

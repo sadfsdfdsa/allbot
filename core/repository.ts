@@ -1,5 +1,5 @@
-import { RedisClientType } from 'redis'
-import { Chat, User } from 'telegraf/types'
+import type { RedisClientType } from 'redis'
+import type { Chat, User } from 'telegraf/types'
 
 export class UserRepository {
   constructor(private readonly db: RedisClientType<any, any, any>) {

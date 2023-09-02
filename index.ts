@@ -8,7 +8,7 @@ import { Server } from './core/server.js'
 const main = async (): Promise<void> => {
   const metricsService = new MetricsService()
 
-  const server = new Server(metricsService, process.env.SERVER_PORT)
+  const server = new Server(metricsService, process.env.PORT)
 
   const dbClient = await createDB(process.env.REDIS_URI)
 

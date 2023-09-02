@@ -11,5 +11,5 @@ It's require `.env` after fork:
 REDIS_URI=rediss://your-host-uri
 TG_TOKEN=STRING_FROM_BOT_FATHER
 BOT_NAME=@allsuperior_bot
-SERVER_PORT=8080
+PORT=8080
 ```

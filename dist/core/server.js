@@ -10,11 +10,6 @@ export class Server {
         if (!port)
             throw new Error('Incorrect port');
         this.app = express();
-    }
-    listen() {
-        if (this.isListening)
-            throw new Error('Double listen');
-        this.isListening = true;
         this.app.get('/health', (req, res) => {
             res.send({
                 status: 200,
@@ -25,6 +20,11 @@ export class Server {
             res.setHeader('Content-Type', contentType);
             res.send(metricsString);
         });
+    }
+    listen() {
+        if (this.isListening)
+            throw new Error('Double listen');
+        this.isListening = true;
         this.app.listen(Number(this.port), () => {
             console.log(`Server is listening on port ${this.port}`);
         });

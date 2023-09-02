@@ -3,14 +3,24 @@ import 'dotenv/config';
 import { createDB } from './core/db.js';
 import { UserRepository } from './core/repository.js';
 import { createBot } from './core/bot.js';
-const NAME = '@allsuperior_bot';
-const ALL_COMMANDS = ['@all', '/all', NAME];
+const NAME = process.env.BOT_NAME;
+const ALL_COMMANDS = ['@all', '/all'];
+if (NAME)
+    ALL_COMMANDS.push(NAME);
+const HEALTH_PROBE = '/health';
 const main = async () => {
     const client = await createDB(process.env.REDIS_URI);
     const repository = new UserRepository(client);
     const bot = createBot(process.env.TG_TOKEN);
     bot.on(message('text'), async (ctx) => {
         const { message: { from, text, message_id }, chat: { id }, } = ctx;
+        // Health check
+        if (text === HEALTH_PROBE) {
+            ctx.reply(JSON.stringify({ status: 200 }), {
+                reply_to_message_id: message_id,
+            });
+            return;
+        }
         await repository.addUsers(id, [from]);
         const isCallAll = ALL_COMMANDS.some((command) => text.includes(command));
         console.log(`Message, should reply=${isCallAll}`, text);

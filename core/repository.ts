@@ -17,7 +17,22 @@ export class UserRepository {
     const timeMark = `Add users ${JSON.stringify(usernamesById)}`
     console.time(timeMark)
 
-    await this.db.hSet(this.convertId(chatId), usernamesById)
+    try {
+      await this.db.hSet(this.convertId(chatId), usernamesById)
+    } catch (err) {
+      // In case of [ErrorReply: ERR wrong number of arguments for 'hset' command]
+      console.error('Redis error', err)
+
+      const chatIdStr = this.convertId(chatId)
+
+      try {
+        const promises = Object.entries(usernamesById).map(([id, username]) => this.db.hSet(chatIdStr, id, username))
+
+        await Promise.all(promises)
+      } catch (err2) {
+        console.error('Redis again error', err)
+      }
+    }
 
     console.timeEnd(timeMark)
   }

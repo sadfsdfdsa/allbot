@@ -1,18 +1,34 @@
 import type { RedisClientType } from 'redis'
 import type { Chat, User } from 'telegraf/types'
 
+const MAX_CACHE_SIZE = 1000
+
 export class UserRepository {
+
+
+  private readonly cachedUsernames = new Array<NonNullable<User['username']>>()
+
   constructor(private readonly db: RedisClientType<any, any, any>) {
     console.log('Init User repository')
   }
 
+  // TODO improve tests
   public async addUsers(chatId: Chat['id'], users: User[]): Promise<void> {
     const usernamesById: Record<string, string> = {}
     users.forEach((user) => {
-      if (!user.username || user.is_bot) return
+      if (!user.username || user.is_bot || this.cachedUsernames.includes(user.username)) return
 
+      this.cachedUsernames.push(user.username)
       usernamesById[this.convertId(user.id)] = user.username
     })
+
+    if (this.cachedUsernames.length > MAX_CACHE_SIZE) {
+      const needToRemove = MAX_CACHE_SIZE - this.cachedUsernames.length
+      const removed = this.cachedUsernames.splice(0, needToRemove)
+      console.log('Remove users from cache', needToRemove, removed)
+    }
+
+    if (!Object.keys(usernamesById).length) return
 
     const timeMark = `Add users ${JSON.stringify(usernamesById)}`
     console.time(timeMark)

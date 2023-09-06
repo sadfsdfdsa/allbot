@@ -1,16 +1,27 @@
+const MAX_CACHE_SIZE = 1000;
 export class UserRepository {
     db;
+    cachedUsernames = new Array();
     constructor(db) {
         this.db = db;
         console.log('Init User repository');
     }
+    // TODO improve tests
     async addUsers(chatId, users) {
         const usernamesById = {};
         users.forEach((user) => {
-            if (!user.username || user.is_bot)
+            if (!user.username || user.is_bot || this.cachedUsernames.includes(user.username))
                 return;
+            this.cachedUsernames.push(user.username);
             usernamesById[this.convertId(user.id)] = user.username;
         });
+        if (this.cachedUsernames.length > MAX_CACHE_SIZE) {
+            const needToRemove = MAX_CACHE_SIZE - this.cachedUsernames.length;
+            const removed = this.cachedUsernames.splice(0, needToRemove);
+            console.log('Remove users from cache', needToRemove, removed);
+        }
+        if (!Object.keys(usernamesById).length)
+            return;
         const timeMark = `Add users ${JSON.stringify(usernamesById)}`;
         console.time(timeMark);
         try {

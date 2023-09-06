@@ -18,14 +18,14 @@ export class UserRepository {
         }
         catch (err) {
             // In case of [ErrorReply: ERR wrong number of arguments for 'hset' command]
-            console.error('Redis error', err);
+            console.error('Redis error', err, JSON.stringify(usernamesById));
             const chatIdStr = this.convertId(chatId);
             try {
                 const promises = Object.entries(usernamesById).map(([id, username]) => this.db.hSet(chatIdStr, id, username));
                 await Promise.all(promises);
             }
             catch (err2) {
-                console.error('Redis again error', err);
+                console.error('Redis again error', err, JSON.stringify(usernamesById));
             }
         }
         console.timeEnd(timeMark);

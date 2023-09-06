@@ -21,7 +21,7 @@ export class UserRepository {
       await this.db.hSet(this.convertId(chatId), usernamesById)
     } catch (err) {
       // In case of [ErrorReply: ERR wrong number of arguments for 'hset' command]
-      console.error('Redis error', err)
+      console.error('Redis error', err, JSON.stringify(usernamesById))
 
       const chatIdStr = this.convertId(chatId)
 
@@ -30,7 +30,7 @@ export class UserRepository {
 
         await Promise.all(promises)
       } catch (err2) {
-        console.error('Redis again error', err)
+        console.error('Redis again error', err, JSON.stringify(usernamesById))
       }
     }
 

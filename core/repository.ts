@@ -5,7 +5,6 @@ const MAX_CACHE_SIZE = 1000
 
 export class UserRepository {
 
-
   private readonly cachedUsernames = new Array<NonNullable<User['username']>>()
 
   constructor(private readonly db: RedisClientType<any, any, any>) {

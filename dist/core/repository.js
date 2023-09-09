@@ -49,7 +49,7 @@ export class UserRepository {
         console.timeEnd(timeMark);
         const date = new Date();
         this.db.hSet(KEY_FOR_TIMESTAMP, {
-            [this.convertId(chatId)]: date.toLocaleString('ru-RU')
+            [this.convertId(chatId)]: date.toLocaleString('ru-RU', { timeZone: 'Asia/Yekaterinburg' })
         }).catch(console.error);
         return Object.values(chatUsernames);
     }

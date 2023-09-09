@@ -52,6 +52,7 @@ describe('repository', () => {
         id2: 'username2',
       }
       dbMock.hGetAll.mockResolvedValue(data)
+      dbMock.hSet.mockResolvedValue(0)
       const chatId = 1
 
       const result = await instance.getUsernamesByChatId(chatId)

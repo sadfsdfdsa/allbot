@@ -75,6 +75,8 @@ export class Bot {
     reply: Context['reply']
   ): Promise<void> {
     if (!isChatGroup(chatId)) {
+      console.log('Direct message from', from.username)
+      
       reply(`Add me to your group, here is example @all mention for you:`)
 
       reply(`All from ${from.username}: @${from.username}`, {

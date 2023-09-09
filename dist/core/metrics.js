@@ -1,8 +1,12 @@
 import { Registry, Counter, collectDefaultMetrics } from 'prom-client';
+const KEY_FOR_TIMESTAMP = 'TIMESTAMP';
 export class MetricsService {
+    db;
     registry;
     replyCounter;
-    constructor(measureDefaultMetrics = true) {
+    constructor(db, measureDefaultMetrics = true) {
+        this.db = db;
+        console.log('Metrics service started');
         this.registry = new Registry();
         this.replyCounter = new Counter({
             name: 'allbot_replies_counter',
@@ -14,6 +18,12 @@ export class MetricsService {
         collectDefaultMetrics({
             register: this.registry,
         });
+    }
+    updateLatestUsage(key) {
+        const date = new Date();
+        this.db.hSet(KEY_FOR_TIMESTAMP, {
+            [key]: date.toLocaleString('ru-RU', { timeZone: 'Asia/Yekaterinburg' })
+        }).catch(console.error);
     }
     addReply() {
         this.replyCounter.inc();

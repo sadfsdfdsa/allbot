@@ -4,15 +4,18 @@ import { UserRepository } from './core/repository.js'
 import { Bot } from './core/bot.js'
 import { MetricsService } from './core/metrics.js'
 import { Server } from './core/server.js'
+import { CacheService } from './core/cache.js'
 
 const main = async (): Promise<void> => {
-  const metricsService = new MetricsService()
+  const dbClient = await createDB(process.env.REDIS_URI)
+
+  const metricsService = new MetricsService(dbClient)
 
   const server = new Server(metricsService, process.env.PORT)
 
-  const dbClient = await createDB(process.env.REDIS_URI)
-
-  const userRepository = new UserRepository(dbClient)
+  const cache = new CacheService()
+  
+  const userRepository = new UserRepository(dbClient, metricsService, cache)
 
   const bot = new Bot(
     userRepository,

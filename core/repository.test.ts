@@ -2,17 +2,23 @@ import { mock } from 'jest-mock-extended'
 import type { RedisClientType } from 'redis'
 import { UserRepository } from './repository.js'
 import { User } from 'telegraf/types'
+import { CacheService } from './cache.js'
+import { MetricsService } from './metrics.js'
 
 describe('repository', () => {
   let dbMock = mock<RedisClientType<any, any, any>>()
+  let metricsMock =  mock<MetricsService>()
+  let cacheMock =  mock<CacheService>()
 
   beforeEach(() => {
-    dbMock = mock<RedisClientType<any, any, any>>()
+    let dbMock = mock<RedisClientType<any, any, any>>()
+    let metricsMock =  mock<MetricsService>()
+    let cacheMock =  mock<CacheService>()
   })
 
   describe('#addUsers', () => {
     test('should add correct users and filter bots', async () => {
-      const instance = new UserRepository(dbMock)
+      const instance = new UserRepository(dbMock, metricsMock, cacheMock)
 
       const chatId = 1
       const userOne = mock<User>({
@@ -45,7 +51,7 @@ describe('repository', () => {
 
   describe('#getUsernamesByChatId', () => {
     test('should correct call db and return data', async () => {
-      const instance = new UserRepository(dbMock)
+      const instance = new UserRepository(dbMock, metricsMock, cacheMock)
 
       const data = {
         id1: 'username1',
@@ -64,7 +70,7 @@ describe('repository', () => {
 
   describe('#deleteUser', () => {
     test('should correct call db for user removing', async () => {
-      const instance = new UserRepository(dbMock)
+      const instance = new UserRepository(dbMock, metricsMock, cacheMock)
 
       const userId = 2
       const chatId = 1

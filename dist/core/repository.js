@@ -1,26 +1,23 @@
-const MAX_CACHE_SIZE = 1000;
-const KEY_FOR_TIMESTAMP = 'TIMESTAMP';
 export class UserRepository {
     db;
-    cachedUsernames = new Array();
-    constructor(db) {
+    metrics;
+    cache;
+    constructor(db, metrics, cache) {
         this.db = db;
+        this.metrics = metrics;
+        this.cache = cache;
         console.log('Init User repository');
     }
     // TODO improve tests
     async addUsers(chatId, users) {
         const usernamesById = {};
         users.forEach((user) => {
-            if (!user.username || user.is_bot || this.cachedUsernames.includes(user.username))
+            if (!user.username || user.is_bot || this.cache.isInCache(user.username))
                 return;
-            this.cachedUsernames.push(user.username);
+            this.cache.addToCache(user.username);
             usernamesById[this.convertId(user.id)] = user.username;
         });
-        if (this.cachedUsernames.length > MAX_CACHE_SIZE) {
-            const needToRemove = MAX_CACHE_SIZE - this.cachedUsernames.length;
-            const removed = this.cachedUsernames.splice(0, needToRemove);
-            console.log('Remove users from cache', needToRemove, removed);
-        }
+        this.cache.tryClearCache();
         if (!Object.keys(usernamesById).length)
             return;
         const timeMark = `Add users ${JSON.stringify(usernamesById)}`;
@@ -45,12 +42,10 @@ export class UserRepository {
     async getUsernamesByChatId(chatId) {
         const timeMark = `Get users ${chatId}`;
         console.time(timeMark);
-        const chatUsernames = await this.db.hGetAll(this.convertId(chatId));
+        const dbKey = this.convertId(chatId);
+        const chatUsernames = await this.db.hGetAll(dbKey);
         console.timeEnd(timeMark);
-        const date = new Date();
-        this.db.hSet(KEY_FOR_TIMESTAMP, {
-            [this.convertId(chatId)]: date.toLocaleString('ru-RU', { timeZone: 'Asia/Yekaterinburg' })
-        }).catch(console.error);
+        this.metrics.updateLatestUsage(dbKey);
         return Object.values(chatUsernames);
     }
     async deleteUser(chatId, userId) {

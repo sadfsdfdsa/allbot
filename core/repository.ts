@@ -1,14 +1,16 @@
 import type { RedisClientType } from 'redis'
 import type { Chat, User } from 'telegraf/types'
-
-const MAX_CACHE_SIZE = 1000
-const KEY_FOR_TIMESTAMP = 'TIMESTAMP'
+import { MetricsService } from './metrics.js'
+import { CacheService } from './cache.js'
 
 export class UserRepository {
 
-  private readonly cachedUsernames = new Array<NonNullable<User['username']>>()
 
-  constructor(private readonly db: RedisClientType<any, any, any>) {
+  constructor(
+    private readonly db: RedisClientType<any, any, any>,
+    private readonly metrics: MetricsService,
+    private readonly cache: CacheService
+  ) {
     console.log('Init User repository')
   }
 
@@ -16,17 +18,13 @@ export class UserRepository {
   public async addUsers(chatId: Chat['id'], users: User[]): Promise<void> {
     const usernamesById: Record<string, string> = {}
     users.forEach((user) => {
-      if (!user.username || user.is_bot || this.cachedUsernames.includes(user.username)) return
+      if (!user.username || user.is_bot || this.cache.isInCache(user.username)) return
 
-      this.cachedUsernames.push(user.username)
+      this.cache.addToCache(user.username)
       usernamesById[this.convertId(user.id)] = user.username
     })
 
-    if (this.cachedUsernames.length > MAX_CACHE_SIZE) {
-      const needToRemove = MAX_CACHE_SIZE - this.cachedUsernames.length
-      const removed = this.cachedUsernames.splice(0, needToRemove)
-      console.log('Remove users from cache', needToRemove, removed)
-    }
+    this.cache.tryClearCache()
 
     if (!Object.keys(usernamesById).length) return
 
@@ -57,15 +55,12 @@ export class UserRepository {
     const timeMark = `Get users ${chatId}`
     console.time(timeMark)
 
-    const chatUsernames = await this.db.hGetAll(this.convertId(chatId))
+    const dbKey = this.convertId(chatId)
+    const chatUsernames = await this.db.hGetAll(dbKey)
 
     console.timeEnd(timeMark)
 
-    const date = new Date()
-
-    this.db.hSet(KEY_FOR_TIMESTAMP, {
-      [this.convertId(chatId)]: date.toLocaleString('ru-RU', {timeZone: 'Asia/Yekaterinburg'})
-    }).catch(console.error)
+    this.metrics.updateLatestUsage(dbKey)
 
     return Object.values(chatUsernames)
   }

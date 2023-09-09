@@ -3,6 +3,7 @@ import { UserRepository } from './repository.js'
 import { MetricsService } from './metrics.js'
 import { message } from 'telegraf/filters'
 import { Chat, Message, User } from 'telegraf/types'
+import { isChatGroup } from './utils/utils.js'
 
 type HandleMessagePayload = {
   chatId: Chat['id']
@@ -73,6 +74,15 @@ export class Bot {
     { from, text, messageId, chatId }: HandleMessagePayload,
     reply: Context['reply']
   ): Promise<void> {
+    if (!isChatGroup(chatId)) {
+      reply(`Add me to your group, here is example @all mention for you:`)
+
+      reply(`All from ${from.username}: @${from.username}`, {
+        reply_to_message_id: messageId,
+      })
+      return
+    }
+
     await this.userRepository.addUsers(chatId, [from])
 
     const isCallAll = this.COMMANDS.some((command) => text.includes(command))

@@ -1,5 +1,6 @@
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
+import { isChatGroup } from './utils/utils.js';
 export class Bot {
     userRepository;
     metricsService;
@@ -36,6 +37,13 @@ export class Bot {
         this.bot.launch();
     }
     async handleMessage({ from, text, messageId, chatId }, reply) {
+        if (!isChatGroup(chatId)) {
+            reply(`Add me to your group, here is example @all mention for you:`);
+            reply(`All from ${from.username}: @${from.username}`, {
+                reply_to_message_id: messageId,
+            });
+            return;
+        }
         await this.userRepository.addUsers(chatId, [from]);
         const isCallAll = this.COMMANDS.some((command) => text.includes(command));
         console.log(`Message, should reply=${isCallAll}`, text);

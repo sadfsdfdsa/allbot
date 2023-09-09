@@ -1,4 +1,5 @@
 const MAX_CACHE_SIZE = 1000;
+const KEY_FOR_TIMESTAMP = 'TIMESTAMP';
 export class UserRepository {
     db;
     cachedUsernames = new Array();
@@ -46,6 +47,10 @@ export class UserRepository {
         console.time(timeMark);
         const chatUsernames = await this.db.hGetAll(this.convertId(chatId));
         console.timeEnd(timeMark);
+        const date = new Date();
+        this.db.hSet(KEY_FOR_TIMESTAMP, {
+            [this.convertId(chatId)]: date.toLocaleString('ru-RU')
+        }).catch(console.error);
         return Object.values(chatUsernames);
     }
     async deleteUser(chatId, userId) {

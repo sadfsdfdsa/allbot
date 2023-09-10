@@ -2,6 +2,7 @@ import { Registry, Counter, collectDefaultMetrics } from 'prom-client'
 import { RedisClientType } from 'redis'
 
 const KEY_FOR_TIMESTAMP = 'TIMESTAMP'
+const KEY_FOR_COUNTER = 'COUNTER'
 
 export class MetricsService {
   private readonly registry: Registry
@@ -34,6 +35,8 @@ export class MetricsService {
     this.db.hSet(KEY_FOR_TIMESTAMP, {
       [key]: date.toLocaleString('ru-RU', {timeZone: 'Asia/Yekaterinburg'})
     }).catch(console.error)
+
+    this.db.hIncrBy(KEY_FOR_COUNTER, key, 1).catch(console.error)
   }
 
   public addReply(): void {

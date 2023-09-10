@@ -47,9 +47,9 @@ export class Bot {
         }
         await this.userRepository.addUsers(chatId, [from]);
         const isCallAll = this.COMMANDS.some((command) => text.includes(command));
-        console.log(`Message, should reply=${isCallAll}`, text);
         if (!isCallAll)
             return;
+        console.log(`Mention with pattern in group`, chatId);
         const chatUsernames = await this.userRepository.getUsernamesByChatId(chatId);
         if (!Object.values(chatUsernames).length)
             return;
@@ -60,7 +60,7 @@ export class Bot {
         });
     }
     handleAddMembers(chatId, users) {
-        console.log('Try add new members', users);
+        console.log('Try add new members', users.map(item => item.username));
         return this.userRepository.addUsers(chatId, users);
     }
     handleDelete(chatId, user) {

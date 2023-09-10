@@ -1,5 +1,6 @@
 import { Registry, Counter, collectDefaultMetrics } from 'prom-client';
 const KEY_FOR_TIMESTAMP = 'TIMESTAMP';
+const KEY_FOR_COUNTER = 'COUNTER';
 export class MetricsService {
     db;
     registry;
@@ -24,6 +25,7 @@ export class MetricsService {
         this.db.hSet(KEY_FOR_TIMESTAMP, {
             [key]: date.toLocaleString('ru-RU', { timeZone: 'Asia/Yekaterinburg' })
         }).catch(console.error);
+        this.db.hIncrBy(KEY_FOR_COUNTER, key, 1).catch(console.error);
     }
     addReply() {
         this.replyCounter.inc();

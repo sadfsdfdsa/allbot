@@ -15,11 +15,8 @@ export class CacheService {
         return this.cachedUsernames.includes(username)
     }
 
-    public addToCache(username: EnsuredUsername): number {
-        if (this.isInCache(username)) return this.cachedUsernames.length
-
-        console.log('Add to cache', username)
-        return this.cachedUsernames.push(username)
+    public addToCache(usernames: EnsuredUsername[]): void {
+        usernames.forEach(this.addToCacheSingle)
     }
 
     public tryClearCache(): void {
@@ -28,5 +25,12 @@ export class CacheService {
         const needToRemove = this.cachedUsernames.length - this.MAX_CACHE_SIZE
         const removed = this.cachedUsernames.splice(0, needToRemove)
         console.log('Remove users from cache', needToRemove, removed)
+    }
+
+    private addToCacheSingle(username: EnsuredUsername): void {
+        if (this.isInCache(username)) return
+
+        console.log('Add to cache', username, this.cachedUsernames.length)
+        this.cachedUsernames.push(username)
     }
 }

@@ -14,7 +14,7 @@ export class UserRepository {
         users.forEach((user) => {
             if (!user.username || user.is_bot || this.cache.isInCache(user.username))
                 return;
-            this.cache.addToCache(user.username);
+            this.cache.addToCache([user.username]);
             usernamesById[this.convertId(user.id)] = user.username;
         });
         this.cache.tryClearCache();
@@ -43,10 +43,12 @@ export class UserRepository {
         const timeMark = `Get users ${chatId}`;
         console.time(timeMark);
         const dbKey = this.convertId(chatId);
-        const chatUsernames = await this.db.hGetAll(dbKey);
+        const chatUsernamesById = await this.db.hGetAll(dbKey);
         console.timeEnd(timeMark);
         this.metrics.updateLatestUsage(dbKey);
-        return Object.values(chatUsernames);
+        const usernames = Object.values(chatUsernamesById);
+        this.cache.addToCache(usernames);
+        return usernames;
     }
     async deleteUser(chatId, userId) {
         const timeMark = `Delete user ${chatId} ${userId}`;

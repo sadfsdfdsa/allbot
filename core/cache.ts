@@ -15,8 +15,10 @@ export class CacheService {
         return this.cachedUsernames.includes(username)
     }
 
-    public addToCache(usernames: EnsuredUsername[]): void {
-        usernames.forEach(this.addToCacheSingle)
+    public addToCache(usernames: EnsuredUsername[]): number {
+        usernames.forEach(this.addToCacheSingle.bind(this))
+
+        return this.cachedUsernames.length
     }
 
     public tryClearCache(): void {

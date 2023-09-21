@@ -5,15 +5,19 @@ export class Bot {
     userRepository;
     metricsService;
     bot;
-    COMMANDS = ['@all', '/all'];
+    MENTION_COMMANDS = ['@all', '/all'];
+    FEEDBACK_COMMAND = '/feedback';
+    CODE_COMMAND = '/code';
+    ADMIN_ID;
     isListening = false;
-    constructor(userRepository, metricsService, botName, token) {
+    constructor(userRepository, metricsService, botName, adminId, token) {
         this.userRepository = userRepository;
         this.metricsService = metricsService;
         if (!token)
             throw new Error('No tg token set');
         if (botName)
-            this.COMMANDS.push(botName);
+            this.MENTION_COMMANDS.push(botName);
+        this.ADMIN_ID = adminId;
         this.bot = new Telegraf(token);
         this.bot.on(message('text'), async (ctx) => {
             const { message: { from, text, message_id }, chat: { id }, } = ctx;
@@ -37,6 +41,30 @@ export class Bot {
         this.bot.launch();
     }
     async handleMessage({ from, text, messageId, chatId }, reply) {
+        if (text.startsWith(this.CODE_COMMAND)) {
+            reply(`I am an opensource project, feel free to reuse code or make bot better via /feedback.\nGithub link: https://github.com/sadfsdfdsa/allbot`, {
+                reply_to_message_id: messageId,
+            });
+            return;
+        }
+        if (text.startsWith(this.FEEDBACK_COMMAND)) {
+            const feedback = text.split(this.FEEDBACK_COMMAND)[1] || undefined;
+            if (!feedback) {
+                console.log(`Receive empty feedback from user ${from.username} in ${chatId}: ${feedback}`);
+                reply(`Add something in your feedback as feature or bug report`, {
+                    reply_to_message_id: messageId,
+                });
+                return;
+            }
+            console.log(`Receive feedback from user ${from.username} in ${chatId}: ${feedback}`);
+            reply(`Your review has been successfully registered, we will contact you, thank you!`, {
+                reply_to_message_id: messageId,
+            });
+            if (!this.ADMIN_ID)
+                return;
+            this.bot.telegram.sendMessage(this.ADMIN_ID, `There is a new feedback from @${from.username} in chat group ${chatId}:\n${feedback}`);
+            return;
+        }
         if (!isChatGroup(chatId)) {
             console.log('Direct message from', from.username);
             reply(`Add me to your group, here is example @all mention for you:`);
@@ -46,7 +74,7 @@ export class Bot {
             return;
         }
         await this.userRepository.addUsers(chatId, [from]);
-        const isCallAll = this.COMMANDS.some((command) => text.includes(command));
+        const isCallAll = this.MENTION_COMMANDS.some((command) => text.includes(command));
         if (!isCallAll)
             return;
         console.log(`Mention with pattern in group`, chatId);

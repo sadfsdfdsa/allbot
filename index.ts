@@ -21,6 +21,7 @@ const main = async (): Promise<void> => {
     userRepository,
     metricsService,
     process.env.BOT_NAME,
+    Number(process.env.ADMIN_ID),
     process.env.TG_TOKEN
   )
 

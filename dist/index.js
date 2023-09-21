@@ -11,7 +11,7 @@ const main = async () => {
     const server = new Server(metricsService, process.env.PORT);
     const cache = new CacheService();
     const userRepository = new UserRepository(dbClient, metricsService, cache);
-    const bot = new Bot(userRepository, metricsService, process.env.BOT_NAME, process.env.TG_TOKEN);
+    const bot = new Bot(userRepository, metricsService, process.env.BOT_NAME, Number(process.env.ADMIN_ID), process.env.TG_TOKEN);
     bot.launch();
     server.listen();
 };

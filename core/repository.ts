@@ -4,8 +4,6 @@ import { MetricsService } from './metrics.js'
 import { CacheService } from './cache.js'
 
 export class UserRepository {
-
-
   constructor(
     private readonly db: RedisClientType<any, any, any>,
     private readonly metrics: MetricsService,
@@ -18,8 +16,8 @@ export class UserRepository {
   public async addUsers(chatId: Chat['id'], users: User[]): Promise<void> {
     const usernamesById: Record<string, string> = {}
     users.forEach((user) => {
-      if (!user.username || user.is_bot || this.cache.isInCache(user.username)) return
-
+      if (!user.username || user.is_bot || this.cache.isInCache(user.username))
+        return
       this.cache.addToCache([user.username])
       usernamesById[this.convertId(user.id)] = user.username
     })
@@ -40,7 +38,9 @@ export class UserRepository {
       const chatIdStr = this.convertId(chatId)
 
       try {
-        const promises = Object.entries(usernamesById).map(([id, username]) => this.db.hSet(chatIdStr, id, username))
+        const promises = Object.entries(usernamesById).map(([id, username]) =>
+          this.db.hSet(chatIdStr, id, username)
+        )
 
         await Promise.all(promises)
       } catch (err2) {

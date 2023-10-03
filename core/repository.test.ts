@@ -7,13 +7,13 @@ import { MetricsService } from './metrics.js'
 
 describe('repository', () => {
   let dbMock = mock<RedisClientType<any, any, any>>()
-  let metricsMock =  mock<MetricsService>()
-  let cacheMock =  mock<CacheService>()
+  let metricsMock = mock<MetricsService>()
+  let cacheMock = mock<CacheService>()
 
   beforeEach(() => {
-    let dbMock = mock<RedisClientType<any, any, any>>()
-    let metricsMock =  mock<MetricsService>()
-    let cacheMock =  mock<CacheService>()
+    dbMock = mock<RedisClientType<any, any, any>>()
+    metricsMock = mock<MetricsService>()
+    cacheMock = mock<CacheService>()
   })
 
   describe('#addUsers', () => {

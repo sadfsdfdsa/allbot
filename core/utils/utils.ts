@@ -1,4 +1,3 @@
-
 export const isChatGroup = (chatId: number): boolean => {
-    return chatId < 0
+  return chatId < 0
 }

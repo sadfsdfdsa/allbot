@@ -21,6 +21,8 @@ export class Bot {
 
   private readonly CODE_COMMAND = '/code'
 
+  private readonly SUPPORT_PAY_COMMAND = '/support'
+
   private readonly ADMIN_ID: number | undefined
 
   private isListening = false
@@ -45,7 +47,7 @@ export class Bot {
         message: { from, text, message_id },
         chat: { id },
       } = ctx
-      
+
       await this.handleMessage(
         {
           from,
@@ -83,6 +85,26 @@ export class Bot {
     { from, text, messageId, chatId }: HandleMessagePayload,
     reply: Context['reply'],
   ): Promise<void> {
+    if (text.startsWith(this.SUPPORT_PAY_COMMAND)) {
+      const message = `
+      This bot is free to use, but host and database are paid options for project.
+So, if you have opportunity to support, it will be very helpful!
+Every 1$ can help to improve features, performance and availability for the bot. 
+Support via USDT-TRX: <code>TJyEa6p3HvAHz34gn7hZHYNwY65iHryu3w</code>
+Support via USDT-ETH: <code>0x7f49e01c13fE782aEB06Dc35a37d357b955b67B0</code>
+Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code>
+Thank you for using and help!
+Note, than you can send /feedback with features or problems.
+      `
+
+      reply(message, {
+        reply_to_message_id: messageId,
+        parse_mode: 'HTML'
+      })
+
+      return
+    }
+
     if (text.startsWith(this.CODE_COMMAND)) {
       reply(`I am an opensource project, feel free to reuse code or make bot better via /feedback.\nGithub link: https://github.com/sadfsdfdsa/allbot`, {
         reply_to_message_id: messageId,

@@ -88,6 +88,8 @@ export class Bot {
     reply: Context['reply'],
   ): Promise<void> {
     if (text.startsWith(this.PRIVACY_COMMAND)) {
+      console.log('Send privacy policy')
+
       const message = `
       Are you concerned about your security and personal data? This is right!
 What do we use? Identifiers of your groups to store data about participants in them: usernames and identifiers to correctly call all users of the group.
@@ -106,6 +108,8 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
     }
 
     if (text.startsWith(this.SUPPORT_PAY_COMMAND)) {
+      console.log('Send payments info')
+
       const message = `
       This bot is free to use, but host and database are paid options for project.
 So, if you have opportunity to support, it will be very helpful!
@@ -126,6 +130,8 @@ Note, than you can send ${this.FEEDBACK_COMMAND} with features or problems.
     }
 
     if (text.startsWith(this.CODE_COMMAND)) {
+      console.log('Send code info')
+
       reply(`I am an opensource project, feel free to reuse code or make bot better via /feedback.\nGithub link: https://github.com/sadfsdfdsa/allbot`, {
         reply_to_message_id: messageId,
       })

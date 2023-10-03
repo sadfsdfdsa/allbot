@@ -9,6 +9,7 @@ export class Bot {
     FEEDBACK_COMMAND = '/feedback';
     CODE_COMMAND = '/code';
     SUPPORT_PAY_COMMAND = '/support';
+    PRIVACY_COMMAND = '/privacy';
     ADMIN_ID;
     isListening = false;
     constructor(userRepository, metricsService, botName, adminId, token) {
@@ -42,6 +43,21 @@ export class Bot {
         this.bot.launch();
     }
     async handleMessage({ from, text, messageId, chatId }, reply) {
+        if (text.startsWith(this.PRIVACY_COMMAND)) {
+            const message = `
+      Are you concerned about your security and personal data? This is right!
+What do we use? Identifiers of your groups to store data about participants in them: usernames and identifiers to correctly call all users of the group.
+All data is transmitted only via encrypted channels and is not used for other purposes.
+We don't read your messages, don't log data about you in public systems and 3th party services except safe hosting and database.
+You can view the project's codebase using ${this.CODE_COMMAND}.
+Be careful when using unfamiliar bots in your communication, it can be dangerous!
+      `;
+            reply(message, {
+                reply_to_message_id: messageId,
+                parse_mode: 'HTML'
+            });
+            return;
+        }
         if (text.startsWith(this.SUPPORT_PAY_COMMAND)) {
             const message = `
       This bot is free to use, but host and database are paid options for project.
@@ -51,7 +67,7 @@ Support via USDT-TRX: <code>TJyEa6p3HvAHz34gn7hZHYNwY65iHryu3w</code>
 Support via USDT-ETH: <code>0x7f49e01c13fE782aEB06Dc35a37d357b955b67B0</code>
 Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code>
 Thank you for using and help!
-Note, than you can send /feedback with features or problems.
+Note, than you can send ${this.FEEDBACK_COMMAND} with features or problems.
       `;
             reply(message, {
                 reply_to_message_id: messageId,

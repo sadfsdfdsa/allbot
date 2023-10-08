@@ -24,13 +24,13 @@ export class MetricsService {
       name: 'allbot_replies_counter',
       help: 'The number of total replies of bot',
     })
+    this.registry.registerMetric(this.replyCounter)
 
     this.cacheCounter = new Counter({
       name: 'allbot_replies_cache',
       help: 'The number of total users in cache right now',
     })
-
-    this.registry.registerMetric(this.replyCounter)
+    this.registry.registerMetric(this.cacheCounter)
 
     if (!measureDefaultMetrics) return
 

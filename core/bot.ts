@@ -113,8 +113,6 @@ Note, than you can send /feedback with features or problems.
         chat: { id: chatId },
       } = ctx
 
-      console.log(ctx.message)
-
       const feedback = text.split('/feedback')[1] || undefined
       if (!feedback) {
         console.log(
@@ -205,18 +203,21 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
       )
       if (!isCallAll) return
 
-      console.log(`Mention with pattern in group`, chatId)
-
       const chatUsernames = await this.userRepository.getUsernamesByChatId(
         chatId
       )
-      if (!Object.values(chatUsernames).length) return
+      const usernames = Object.values(chatUsernames)
 
-      const str = Object.values(chatUsernames).map(
-        (username) => `@${username} `
+      console.log(
+        `Mention with pattern in group for ${usernames.length} people`,
+        chatId
       )
 
-      this.metricsService.addReply()
+      if (!usernames.length) return
+
+      const str = usernames.map((username) => `@${username} `)
+
+      this.metricsService.replyCounter.inc()
 
       ctx.reply(`All from ${from.username}: ${str}`, {
         reply_to_message_id: messageId,
@@ -225,15 +226,10 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
   }
 
   private handleAddMembers(chatId: Chat['id'], users: User[]): Promise<void> {
-    console.log(
-      'Try add new members',
-      users.map((item) => item.username)
-    )
     return this.userRepository.addUsers(chatId, users)
   }
 
   private handleDelete(chatId: Chat['id'], user: User): Promise<void> {
-    console.log('Delete user', user.username)
     return this.userRepository.deleteUser(chatId, user.id)
   }
 }

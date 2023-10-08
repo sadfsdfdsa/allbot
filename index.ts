@@ -13,7 +13,7 @@ const main = async (): Promise<void> => {
 
   const server = new Server(metricsService, process.env.PORT)
 
-  const cache = new CacheService()
+  const cache = new CacheService(metricsService, 150)
   
   const userRepository = new UserRepository(dbClient, metricsService, cache)
 

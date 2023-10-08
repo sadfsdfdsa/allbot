@@ -18,6 +18,7 @@ export class UserRepository {
     users.forEach((user) => {
       if (!user.username || user.is_bot || this.cache.isInCache(user.username))
         return
+
       this.cache.addToCache([user.username])
       usernamesById[this.convertId(user.id)] = user.username
     })

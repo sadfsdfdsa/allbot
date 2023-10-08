@@ -8,7 +8,9 @@ const KEY_FOR_PAYMENTS = 'PAYMENTS'
 export class MetricsService {
   private readonly registry: Registry
 
-  private readonly replyCounter: Counter
+  public readonly replyCounter: Counter
+
+  public readonly cacheCounter: Counter
 
   constructor(
     private readonly db: RedisClientType<any, any, any>,
@@ -22,9 +24,16 @@ export class MetricsService {
       name: 'allbot_replies_counter',
       help: 'The number of total replies of bot',
     })
+
+    this.cacheCounter = new Counter({
+      name: 'allbot_replies_cache',
+      help: 'The number of total users in cache right now',
+    })
+
     this.registry.registerMetric(this.replyCounter)
 
     if (!measureDefaultMetrics) return
+
     collectDefaultMetrics({
       register: this.registry,
     })
@@ -44,10 +53,6 @@ export class MetricsService {
 
   public updateLatestPaymentsCall(key: string): void {
     this.db.hIncrBy(KEY_FOR_PAYMENTS, key, 1).catch(console.error)
-  }
-
-  public addReply(): void {
-    this.replyCounter.inc()
   }
 
   public async getMetrics(): Promise<{

@@ -30,7 +30,7 @@ describe('CacheService', () => {
   })
 
   describe('#tryClearCache', () => {
-    test('should remove element from the start of the cached array', async () => {
+    test('should clear cache if size more than MAX_CACHE_SIZE', async () => {
       const instance = new CacheService(2)
 
       instance.addToCache(['test', 'test2', 'test3'])
@@ -42,8 +42,8 @@ describe('CacheService', () => {
       const res3 = instance.isInCache('test3')
 
       expect(res1).toBe(false)
-      expect(res2).toBe(true)
-      expect(res3).toBe(true)
+      expect(res2).toBe(false)
+      expect(res3).toBe(false)
     })
   })
 })

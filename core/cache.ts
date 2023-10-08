@@ -1,36 +1,46 @@
 import { User } from 'telegraf/types'
+import { MetricsService } from './metrics.js'
 
 type EnsuredUsername = NonNullable<User['username']>
 
+/**
+ * Service to preserve high load to Redis database
+ */
 export class CacheService {
-  private readonly cachedUsernames = new Array<EnsuredUsername>()
+  private cachedUsernames = new Set<EnsuredUsername>()
 
-  constructor(private readonly MAX_CACHE_SIZE = 1000) {
+  constructor(
+    private readonly metricsService: MetricsService,
+    private readonly MAX_CACHE_SIZE: number
+    ) {
     console.log('Init Cache service')
   }
 
   public isInCache(username: EnsuredUsername): boolean {
-    return this.cachedUsernames.includes(username)
+    return this.cachedUsernames.has(username)
   }
 
   public addToCache(usernames: EnsuredUsername[]): number {
     usernames.forEach(this.addToCacheSingle.bind(this))
 
-    return this.cachedUsernames.length
+    return this.cachedUsernames.size
   }
 
   public tryClearCache(): void {
-    if (this.cachedUsernames.length <= this.MAX_CACHE_SIZE) return
+    if (this.cachedUsernames.size <= this.MAX_CACHE_SIZE) return
 
-    const needToRemove = this.cachedUsernames.length - this.MAX_CACHE_SIZE
-    const removed = this.cachedUsernames.splice(0, needToRemove)
-    console.log('Remove users from cache', needToRemove, removed)
+    this.cachedUsernames.clear()
+    this.metricsService.cacheCounter.reset()
+
+    console.log('Remove users from cache', this.MAX_CACHE_SIZE)
   }
 
   private addToCacheSingle(username: EnsuredUsername): void {
     if (this.isInCache(username)) return
 
-    console.log('Add to cache', username, this.cachedUsernames.length)
-    this.cachedUsernames.push(username)
+    this.metricsService.cacheCounter.inc()
+
+    console.log('Add to cache', username, this.cachedUsernames.size)
+    this.cachedUsernames.add(username)
   }
 }

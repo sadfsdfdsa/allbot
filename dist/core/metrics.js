@@ -6,6 +6,7 @@ export class MetricsService {
     db;
     registry;
     replyCounter;
+    cacheCounter;
     constructor(db, measureDefaultMetrics = true) {
         this.db = db;
         console.log('Metrics service started');
@@ -13,6 +14,10 @@ export class MetricsService {
         this.replyCounter = new Counter({
             name: 'allbot_replies_counter',
             help: 'The number of total replies of bot',
+        });
+        this.cacheCounter = new Counter({
+            name: 'allbot_replies_cache',
+            help: 'The number of total users in cache right now',
         });
         this.registry.registerMetric(this.replyCounter);
         if (!measureDefaultMetrics)
@@ -32,9 +37,6 @@ export class MetricsService {
     }
     updateLatestPaymentsCall(key) {
         this.db.hIncrBy(KEY_FOR_PAYMENTS, key, 1).catch(console.error);
-    }
-    addReply() {
-        this.replyCounter.inc();
     }
     async getMetrics() {
         const metrics = await this.registry.metrics();

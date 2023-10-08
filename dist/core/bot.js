@@ -80,7 +80,6 @@ Note, than you can send /feedback with features or problems.
     registerFeedbackCommand() {
         this.bot.command('feedback', (ctx) => {
             const { message: { from, text, message_id: messageId }, chat: { id: chatId }, } = ctx;
-            console.log(ctx.message);
             const feedback = text.split('/feedback')[1] || undefined;
             if (!feedback) {
                 console.log(`Receive empty feedback from user ${from.username} in ${chatId}: ${feedback}`);
@@ -138,23 +137,22 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
             const isCallAll = this.MENTION_COMMANDS.some((command) => text.includes(command));
             if (!isCallAll)
                 return;
-            console.log(`Mention with pattern in group`, chatId);
             const chatUsernames = await this.userRepository.getUsernamesByChatId(chatId);
-            if (!Object.values(chatUsernames).length)
+            const usernames = Object.values(chatUsernames);
+            console.log(`Mention with pattern in group for ${usernames.length} people`, chatId);
+            if (!usernames.length)
                 return;
-            const str = Object.values(chatUsernames).map((username) => `@${username} `);
-            this.metricsService.addReply();
+            const str = usernames.map((username) => `@${username} `);
+            this.metricsService.replyCounter.inc();
             ctx.reply(`All from ${from.username}: ${str}`, {
                 reply_to_message_id: messageId,
             });
         });
     }
     handleAddMembers(chatId, users) {
-        console.log('Try add new members', users.map((item) => item.username));
         return this.userRepository.addUsers(chatId, users);
     }
     handleDelete(chatId, user) {
-        console.log('Delete user', user.username);
         return this.userRepository.deleteUser(chatId, user.id);
     }
 }

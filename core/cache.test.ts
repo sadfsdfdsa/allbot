@@ -1,8 +1,11 @@
 import { mock } from 'jest-mock-extended'
 import { CacheService } from './cache'
 import { MetricsService } from './metrics'
+import { createDB } from './db'
 
-const metricsService = mock<MetricsService>()
+const clientMock = mock<Awaited<ReturnType<typeof createDB>>>()
+
+const metricsService = new MetricsService(clientMock, false)
 
 describe('CacheService', () => {
   describe('#addToCache', () => {

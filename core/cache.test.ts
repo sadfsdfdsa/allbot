@@ -1,9 +1,13 @@
+import { mock } from 'jest-mock-extended'
 import { CacheService } from './cache'
+import { MetricsService } from './metrics'
+
+const metricsService = mock<MetricsService>()
 
 describe('CacheService', () => {
   describe('#addToCache', () => {
     test('should correct add unique values', async () => {
-      const instance = new CacheService(10)
+      const instance = new CacheService(metricsService, 10)
 
       const first = instance.addToCache(['test'])
       const second = instance.addToCache(['test'])
@@ -15,7 +19,7 @@ describe('CacheService', () => {
 
   describe('#isInCache', () => {
     test('should correct check is in cache', async () => {
-      const instance = new CacheService(10)
+      const instance = new CacheService(metricsService, 10)
 
       instance.addToCache(['test', 'test2', 'test'])
 
@@ -31,7 +35,7 @@ describe('CacheService', () => {
 
   describe('#tryClearCache', () => {
     test('should clear cache if size more than MAX_CACHE_SIZE', async () => {
-      const instance = new CacheService(2)
+      const instance = new CacheService(metricsService, 2)
 
       instance.addToCache(['test', 'test2', 'test3'])
 

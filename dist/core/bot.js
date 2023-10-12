@@ -139,10 +139,10 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
                 return;
             const chatUsernames = await this.userRepository.getUsernamesByChatId(chatId);
             const usernames = Object.values(chatUsernames);
-            console.log(`Mention with pattern in group for ${usernames.length} people`, chatId);
             if (!usernames.length)
                 return;
             const includePay = usernames.length >= 10;
+            console.log(`Mention with pattern in group for ${usernames.length} people, includePay=${includePay}`, chatId);
             const str = usernames.map((username) => `@${username} `);
             this.metricsService.replyCounter.inc();
             let msg = `All from ${from.username}: ${str}`;

@@ -40,7 +40,10 @@ export class CacheService {
 
     this.metricsService.cacheCounter.inc()
 
-    console.log('Add to cache', username, this.cachedUsernames.size)
+    if (this.cachedUsernames.size % 10 === 0) {
+      console.log('Cache size increased', this.cachedUsernames.size)
+    }
+
     this.cachedUsernames.add(username)
   }
 }

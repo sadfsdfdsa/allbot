@@ -9,7 +9,7 @@ const main = async () => {
     const dbClient = await createDB(process.env.REDIS_URI);
     const metricsService = new MetricsService(dbClient);
     const server = new Server(metricsService, process.env.PORT);
-    const cache = new CacheService(metricsService, 150);
+    const cache = new CacheService(metricsService, 250);
     const userRepository = new UserRepository(dbClient, metricsService, cache);
     const bot = new Bot(userRepository, metricsService, process.env.BOT_NAME, Number(process.env.ADMIN_ID), process.env.TG_TOKEN);
     bot.launch();

@@ -186,7 +186,7 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
       } = ctx
 
       if (!isChatGroup(chatId)) {
-        console.log('Direct message from', from.username)
+        console.log(`Direct message from ${ctx.message.text}`, from.username)
 
         ctx.reply(`Add me to your group, here is example @all mention for you:`)
 
@@ -215,11 +215,20 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
 
       if (!usernames.length) return
 
+      const includePay = usernames.length >= 10
+
       const str = usernames.map((username) => `@${username} `)
 
       this.metricsService.replyCounter.inc()
 
-      ctx.reply(`All from ${from.username}: ${str}`, {
+      let msg = `All from ${from.username}: ${str}`
+
+      if (includePay) {
+        msg = msg + `
+        \nSupport bot: /donate`
+      }
+
+      ctx.reply(msg, {
         reply_to_message_id: messageId,
       })
     })

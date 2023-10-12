@@ -126,7 +126,7 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
         this.bot.on(message('text'), async (ctx) => {
             const { message: { from, text, message_id: messageId }, chat: { id: chatId }, } = ctx;
             if (!isChatGroup(chatId)) {
-                console.log('Direct message from', from.username);
+                console.log(`Direct message from ${ctx.message.text}`, from.username);
                 ctx.reply(`Add me to your group, here is example @all mention for you:`);
                 ctx.reply(`All from ${from.username}: @${from.username}`, {
                     reply_to_message_id: messageId,
@@ -142,9 +142,15 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
             console.log(`Mention with pattern in group for ${usernames.length} people`, chatId);
             if (!usernames.length)
                 return;
+            const includePay = usernames.length >= 10;
             const str = usernames.map((username) => `@${username} `);
             this.metricsService.replyCounter.inc();
-            ctx.reply(`All from ${from.username}: ${str}`, {
+            let msg = `All from ${from.username}: ${str}`;
+            if (includePay) {
+                msg = msg + `
+        \nSupport bot: /donate`;
+            }
+            ctx.reply(msg, {
                 reply_to_message_id: messageId,
             });
         });

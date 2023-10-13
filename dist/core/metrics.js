@@ -1,7 +1,7 @@
 import { Registry, Counter, collectDefaultMetrics } from 'prom-client';
-const KEY_FOR_TIMESTAMP = 'TIMESTAMP';
-const KEY_FOR_COUNTER = 'COUNTER';
-const KEY_FOR_PAYMENTS = 'PAYMENTS';
+const KEY_FOR_TIMESTAMP = '!TIMESTAMP';
+const KEY_FOR_COUNTER = '!COUNTER';
+const KEY_FOR_PAYMENTS = '!PAYMENTS';
 export class MetricsService {
     db;
     registry;

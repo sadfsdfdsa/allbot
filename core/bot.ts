@@ -36,7 +36,7 @@ export class Bot {
       },
       {
         command: 'donate',
-        description: 'Get crypto payments links for supporting the project',
+        description: 'Get crypto payments accounts for supporting the project',
       },
       {
         command: 'feedback',
@@ -90,7 +90,7 @@ export class Bot {
       This bot is free to use, but host and database are paid options for project.
 So, if you have opportunity to support, it will be very helpful!
 Every 1$ can help to improve features, performance and availability for the bot. 
-Support via USDT-TRX: <code>TJyEa6p3HvAHz34gn7hZHYNwY65iHryu3w</code>
+Support via USDT-TRC20: <code>TJyEa6p3HvAHz34gn7hZHYNwY65iHryu3w</code>
 Support via USDT-ETH: <code>0x7f49e01c13fE782aEB06Dc35a37d357b955b67B0</code>
 Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code>
 Thank you for using and help!

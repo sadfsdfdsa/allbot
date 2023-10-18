@@ -7,6 +7,7 @@ export class MetricsService {
     registry;
     replyCounter;
     cacheCounter;
+    teamsCacheCounter;
     constructor(db, measureDefaultMetrics = true) {
         this.db = db;
         console.log('Metrics service started');
@@ -21,6 +22,11 @@ export class MetricsService {
             help: 'The number of total users in cache right now',
         });
         this.registry.registerMetric(this.cacheCounter);
+        this.teamsCacheCounter = new Counter({
+            name: 'allbot_replies_team_cache',
+            help: 'The number of total teams in cache right now',
+        });
+        this.registry.registerMetric(this.teamsCacheCounter);
         if (!measureDefaultMetrics)
             return;
         collectDefaultMetrics({

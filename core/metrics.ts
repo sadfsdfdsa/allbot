@@ -12,6 +12,8 @@ export class MetricsService {
 
   public readonly cacheCounter: Counter
 
+  public readonly teamsCacheCounter: Counter
+
   constructor(
     private readonly db: RedisClientType<any, any, any>,
     measureDefaultMetrics = true
@@ -31,6 +33,12 @@ export class MetricsService {
       help: 'The number of total users in cache right now',
     })
     this.registry.registerMetric(this.cacheCounter)
+
+    this.teamsCacheCounter = new Counter({
+      name: 'allbot_replies_team_cache',
+      help: 'The number of total teams in cache right now',
+    })
+    this.registry.registerMetric(this.teamsCacheCounter)
 
     if (!measureDefaultMetrics) return
 

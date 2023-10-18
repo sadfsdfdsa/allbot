@@ -12,9 +12,9 @@ export class UserRepository {
     async addUsers(chatId, users) {
         const usernamesById = {};
         users.forEach((user) => {
-            if (!user.username || user.is_bot || this.cache.isInCache(user.username))
+            if (!user.username || user.is_bot || this.cache.isInCache(chatId, user.username))
                 return;
-            this.cache.addToCache([user.username]);
+            this.cache.addToCache(chatId, [user.username]);
             usernamesById[this.convertId(user.id)] = user.username;
         });
         this.cache.tryClearCache();
@@ -47,7 +47,7 @@ export class UserRepository {
         console.timeEnd(timeMark);
         this.metrics.updateLatestUsage(dbKey);
         const usernames = Object.values(chatUsernamesById);
-        this.cache.addToCache(usernames);
+        this.cache.addToCache(chatId, usernames);
         return usernames;
     }
     async deleteUser(chatId, userId) {

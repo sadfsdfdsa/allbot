@@ -16,10 +16,10 @@ export class UserRepository {
   public async addUsers(chatId: Chat['id'], users: User[]): Promise<void> {
     const usernamesById: Record<string, string> = {}
     users.forEach((user) => {
-      if (!user.username || user.is_bot || this.cache.isInCache(user.username))
+      if (!user.username || user.is_bot || this.cache.isInCache(chatId, user.username))
         return
 
-      this.cache.addToCache([user.username])
+      this.cache.addToCache(chatId, [user.username])
       usernamesById[this.convertId(user.id)] = user.username
     })
 
@@ -65,7 +65,7 @@ export class UserRepository {
 
     const usernames = Object.values(chatUsernamesById)
 
-    this.cache.addToCache(usernames)
+    this.cache.addToCache(chatId, usernames)
 
     return usernames
   }

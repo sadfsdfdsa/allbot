@@ -4,33 +4,45 @@
 export class CacheService {
     metricsService;
     MAX_CACHE_SIZE;
-    cachedUsernames = new Set();
+    cachedChats = new Map();
     constructor(metricsService, MAX_CACHE_SIZE) {
         this.metricsService = metricsService;
         this.MAX_CACHE_SIZE = MAX_CACHE_SIZE;
         console.log('Init Cache service');
     }
-    isInCache(username) {
-        return this.cachedUsernames.has(username);
+    isInCache(chatId, username) {
+        return Boolean(this.cachedChats.get(chatId)?.has(username));
     }
-    addToCache(usernames) {
-        usernames.forEach(this.addToCacheSingle.bind(this));
-        return this.cachedUsernames.size;
+    /**
+     * @returns cache size for chat
+     */
+    addToCache(chatId, usernames) {
+        usernames.forEach((username) => {
+            this.addToCacheSingle(chatId, username);
+        });
+        return this.cachedChats.get(chatId)?.size ?? 0;
     }
     tryClearCache() {
-        if (this.cachedUsernames.size <= this.MAX_CACHE_SIZE)
+        const arr = [...this.cachedChats.values()].map((set) => [...set]).flat();
+        if (arr.length < this.MAX_CACHE_SIZE)
             return;
-        this.cachedUsernames.clear();
         this.metricsService.cacheCounter.reset();
+        this.metricsService.teamsCacheCounter.reset();
+        this.cachedChats.clear();
         console.log('Remove users from cache', this.MAX_CACHE_SIZE);
     }
-    addToCacheSingle(username) {
-        if (this.isInCache(username))
+    addToCacheSingle(chatId, username) {
+        if (this.isInCache(chatId, username))
             return;
         this.metricsService.cacheCounter.inc();
-        if (this.cachedUsernames.size % 10 === 0) {
-            console.log('Cache size increased', this.cachedUsernames.size);
+        if (!this.cachedChats.has(chatId)) {
+            this.cachedChats.set(chatId, new Set());
+            this.metricsService.teamsCacheCounter.inc();
         }
-        this.cachedUsernames.add(username);
+        this.cachedChats.get(chatId)?.add(username);
+        const size = this.cachedChats.get(chatId)?.size ?? 0;
+        if (size % 10 === 0) {
+            console.log(`Cache size increased for chatId ${chatId}`, size);
+        }
     }
 }

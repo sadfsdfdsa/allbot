@@ -45,16 +45,16 @@ export class MetricsService {
     this.registry.registerMetric(this.teamsCacheCounter)
 
     this.newTeamsCounter = new Counter({
-      name: 'allbot_replies_add_team',
+      name: 'allbot_add_team',
       help: 'The number of new added teams',
     })
     this.registry.registerMetric(this.newTeamsCounter)
 
     this.deletedTeamsCounter = new Counter({
-      name: 'allbot_replies_delete_team',
+      name: 'allbot_delete_team',
       help: 'The number of teams bot deleted from',
     })
-    this.registry.registerMetric(this.newTeamsCounter)
+    this.registry.registerMetric(this.deletedTeamsCounter)
 
     if (!measureDefaultMetrics) return
 

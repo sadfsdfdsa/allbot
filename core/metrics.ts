@@ -14,11 +14,15 @@ export class MetricsService {
 
   public readonly teamsCacheCounter: Counter
 
+  public readonly newTeamsCounter: Counter
+
+  public readonly deletedTeamsCounter: Counter
+
   constructor(
     private readonly db: RedisClientType<any, any, any>,
     measureDefaultMetrics = true
   ) {
-    console.log('Metrics service started')
+    console.log('[LAUNCH] Metrics service started')
 
     this.registry = new Registry()
 
@@ -39,6 +43,18 @@ export class MetricsService {
       help: 'The number of total teams in cache right now',
     })
     this.registry.registerMetric(this.teamsCacheCounter)
+
+    this.newTeamsCounter = new Counter({
+      name: 'allbot_replies_add_team',
+      help: 'The number of new added teams',
+    })
+    this.registry.registerMetric(this.newTeamsCounter)
+
+    this.deletedTeamsCounter = new Counter({
+      name: 'allbot_replies_delete_team',
+      help: 'The number of teams bot deleted from',
+    })
+    this.registry.registerMetric(this.newTeamsCounter)
 
     if (!measureDefaultMetrics) return
 

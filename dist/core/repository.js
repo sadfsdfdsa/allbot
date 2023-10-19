@@ -6,7 +6,7 @@ export class UserRepository {
         this.db = db;
         this.metrics = metrics;
         this.cache = cache;
-        console.log('Init User repository');
+        console.log('[LAUNCH] Init User repository');
     }
     // TODO improve tests
     async addUsers(chatId, users) {

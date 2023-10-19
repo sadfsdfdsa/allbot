@@ -60,19 +60,30 @@ export class Bot {
     // Should be last for not overriding commands below
     this.registerHandleMessage()
 
-    this.bot.on(message('new_chat_members'), ({ message, chat }) =>
+    this.bot.on(message('new_chat_members'), ({ message, chat }) => {
       this.handleAddMembers(chat.id, message.new_chat_members)
-    )
 
-    this.bot.on(message('left_chat_member'), ({ chat, message }) =>
+      this.tryDetectBotAddOrDelete(chat.id, message.new_chat_members, 'add')
+    })
+
+    this.bot.on(message('left_chat_member'), ({ chat, message }) => {
       this.handleDelete(chat.id, message.left_chat_member)
-    )
+
+      this.tryDetectBotAddOrDelete(
+        chat.id,
+        [message.left_chat_member],
+        'delete'
+      )
+    })
   }
 
-  public launch(): void {
+  public async launch(): Promise<void> {
     if (this.isListening) throw new Error('Bot already listening')
 
-    console.log('Bot starting')
+    this.bot.botInfo = await this.bot.telegram.getMe()
+    console.log('[LAUNCH] Bot info: ', this.bot.botInfo)
+
+    console.log('[LAUNCH] Bot starting')
 
     this.isListening = true
 
@@ -82,9 +93,26 @@ export class Bot {
     this.bot.launch()
   }
 
+  private tryDetectBotAddOrDelete(
+    chatId: Chat['id'],
+    members: User[],
+    action: 'add' | 'delete'
+  ): void {
+    const thisBot = members.find((user) => user.id === this.bot.botInfo?.id)
+    if (!thisBot) return
+
+    if (action === 'add') {
+      this.metricsService.newTeamsCounter.inc()
+    } else {
+      this.metricsService.deletedTeamsCounter.inc()
+    }
+
+    console.log(`[TEAM_CHANGE] Bot ${action} in ${chatId}`)
+  }
+
   private registerDonateCommand(): void {
     this.bot.command('donate', (ctx) => {
-      console.log('Send payments info')
+      console.log('[PAYMENT] Send payments info')
 
       const message = `
       This bot is free to use, but host and database are paid options for project.
@@ -116,7 +144,7 @@ Note, than you can send /feedback with features or problems.
       const feedback = text.split('/feedback')[1] || undefined
       if (!feedback) {
         console.log(
-          `Receive empty feedback from user ${from.username} in ${chatId}: ${feedback}`
+          `[FEEDBACK] Receive empty feedback from user ${from.username} in ${chatId}: ${feedback}`
         )
 
         ctx.reply(`Add something in your feedback as feature or bug report`, {
@@ -126,7 +154,7 @@ Note, than you can send /feedback with features or problems.
       }
 
       console.log(
-        `Receive feedback from user ${from.username} in ${chatId}: ${feedback}`
+        `[FEEDBACK] Receive feedback from user ${from.username} in ${chatId}: ${feedback}`
       )
 
       ctx.reply(
@@ -147,7 +175,7 @@ Note, than you can send /feedback with features or problems.
 
   private registerPrivacyCommand(): void {
     this.bot.command('privacy', (ctx) => {
-      console.log('Send privacy policy')
+      console.log('[PRIVACY] Send privacy policy')
 
       const message = `
       Are you concerned about your security and personal data? This is right!
@@ -166,8 +194,8 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
   }
 
   private registerCodeCommand(): void {
-    this.bot.command('privacy', (ctx) => {
-      console.log('Send code info')
+    this.bot.command('code', (ctx) => {
+      console.log('[CODE] Send code info')
 
       ctx.reply(
         `I am an opensource project, feel free to reuse code or make bot better via /feedback.\nGithub link: https://github.com/sadfsdfdsa/allbot`,
@@ -186,7 +214,7 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
       } = ctx
 
       if (!isChatGroup(chatId)) {
-        console.log(`Direct message from ${ctx.message.text}`, from.username)
+        console.log(`[DIRECT_MSG] Direct message from ${ctx.message.text}`, from.username)
 
         ctx.reply(`Add me to your group, here is example @all mention for you:`)
 
@@ -213,7 +241,7 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
       const includePay = usernames.length >= 10
 
       console.log(
-        `Mention with pattern in group for ${usernames.length} people, includePay=${includePay}`,
+        `[ALL] Mention with pattern in group for ${usernames.length} people, includePay=${includePay}`,
         chatId
       )
 
@@ -224,7 +252,9 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
       let msg = `All from ${from.username}: ${str}`
 
       if (includePay) {
-        msg = msg + `
+        msg =
+          msg +
+          `
         \nSupport bot: /donate`
       }
 

@@ -45,21 +45,41 @@ export class Bot {
         this.registerCodeCommand();
         // Should be last for not overriding commands below
         this.registerHandleMessage();
-        this.bot.on(message('new_chat_members'), ({ message, chat }) => this.handleAddMembers(chat.id, message.new_chat_members));
-        this.bot.on(message('left_chat_member'), ({ chat, message }) => this.handleDelete(chat.id, message.left_chat_member));
+        this.bot.on(message('new_chat_members'), ({ message, chat }) => {
+            this.handleAddMembers(chat.id, message.new_chat_members);
+            this.tryDetectBotAddOrDelete(chat.id, message.new_chat_members, 'add');
+        });
+        this.bot.on(message('left_chat_member'), ({ chat, message }) => {
+            this.handleDelete(chat.id, message.left_chat_member);
+            this.tryDetectBotAddOrDelete(chat.id, [message.left_chat_member], 'delete');
+        });
     }
-    launch() {
+    async launch() {
         if (this.isListening)
             throw new Error('Bot already listening');
-        console.log('Bot starting');
+        this.bot.botInfo = await this.bot.telegram.getMe();
+        console.log('[LAUNCH] Bot info: ', this.bot.botInfo);
+        console.log('[LAUNCH] Bot starting');
         this.isListening = true;
         process.once('SIGINT', () => this.bot.stop('SIGINT'));
         process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
         this.bot.launch();
     }
+    tryDetectBotAddOrDelete(chatId, members, action) {
+        const thisBot = members.find((user) => user.id === this.bot.botInfo?.id);
+        if (!thisBot)
+            return;
+        if (action === 'add') {
+            this.metricsService.newTeamsCounter.inc();
+        }
+        else {
+            this.metricsService.deletedTeamsCounter.inc();
+        }
+        console.log(`[TEAM_CHANGE] Bot ${action} in ${chatId}`);
+    }
     registerDonateCommand() {
         this.bot.command('donate', (ctx) => {
-            console.log('Send payments info');
+            console.log('[PAYMENT] Send payments info');
             const message = `
       This bot is free to use, but host and database are paid options for project.
 So, if you have opportunity to support, it will be very helpful!
@@ -82,13 +102,13 @@ Note, than you can send /feedback with features or problems.
             const { message: { from, text, message_id: messageId }, chat: { id: chatId }, } = ctx;
             const feedback = text.split('/feedback')[1] || undefined;
             if (!feedback) {
-                console.log(`Receive empty feedback from user ${from.username} in ${chatId}: ${feedback}`);
+                console.log(`[FEEDBACK] Receive empty feedback from user ${from.username} in ${chatId}: ${feedback}`);
                 ctx.reply(`Add something in your feedback as feature or bug report`, {
                     reply_to_message_id: messageId,
                 });
                 return;
             }
-            console.log(`Receive feedback from user ${from.username} in ${chatId}: ${feedback}`);
+            console.log(`[FEEDBACK] Receive feedback from user ${from.username} in ${chatId}: ${feedback}`);
             ctx.reply(`Your review has been successfully registered, we will contact you, thank you!`, {
                 reply_to_message_id: messageId,
             });
@@ -99,7 +119,7 @@ Note, than you can send /feedback with features or problems.
     }
     registerPrivacyCommand() {
         this.bot.command('privacy', (ctx) => {
-            console.log('Send privacy policy');
+            console.log('[PRIVACY] Send privacy policy');
             const message = `
       Are you concerned about your security and personal data? This is right!
 What do we use? Identifiers of your groups to store data about participants in them: usernames and identifiers to correctly call all users of the group.
@@ -115,8 +135,8 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
         });
     }
     registerCodeCommand() {
-        this.bot.command('privacy', (ctx) => {
-            console.log('Send code info');
+        this.bot.command('code', (ctx) => {
+            console.log('[CODE] Send code info');
             ctx.reply(`I am an opensource project, feel free to reuse code or make bot better via /feedback.\nGithub link: https://github.com/sadfsdfdsa/allbot`, {
                 reply_to_message_id: ctx.message.message_id,
             });
@@ -126,7 +146,7 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
         this.bot.on(message('text'), async (ctx) => {
             const { message: { from, text, message_id: messageId }, chat: { id: chatId }, } = ctx;
             if (!isChatGroup(chatId)) {
-                console.log(`Direct message from ${ctx.message.text}`, from.username);
+                console.log(`[DIRECT_MSG] Direct message from ${ctx.message.text}`, from.username);
                 ctx.reply(`Add me to your group, here is example @all mention for you:`);
                 ctx.reply(`All from ${from.username}: @${from.username}`, {
                     reply_to_message_id: messageId,
@@ -142,12 +162,14 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
             if (!usernames.length)
                 return;
             const includePay = usernames.length >= 10;
-            console.log(`Mention with pattern in group for ${usernames.length} people, includePay=${includePay}`, chatId);
+            console.log(`[ALL] Mention with pattern in group for ${usernames.length} people, includePay=${includePay}`, chatId);
             const str = usernames.map((username) => `@${username} `);
             this.metricsService.replyCounter.inc();
             let msg = `All from ${from.username}: ${str}`;
             if (includePay) {
-                msg = msg + `
+                msg =
+                    msg +
+                        `
         \nSupport bot: /donate`;
             }
             ctx.reply(msg, {

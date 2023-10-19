@@ -9,7 +9,7 @@ export class UserRepository {
     private readonly metrics: MetricsService,
     private readonly cache: CacheService
   ) {
-    console.log('Init User repository')
+    console.log('[LAUNCH] Init User repository')
   }
 
   // TODO improve tests

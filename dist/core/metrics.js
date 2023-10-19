@@ -8,9 +8,11 @@ export class MetricsService {
     replyCounter;
     cacheCounter;
     teamsCacheCounter;
+    newTeamsCounter;
+    deletedTeamsCounter;
     constructor(db, measureDefaultMetrics = true) {
         this.db = db;
-        console.log('Metrics service started');
+        console.log('[LAUNCH] Metrics service started');
         this.registry = new Registry();
         this.replyCounter = new Counter({
             name: 'allbot_replies_counter',
@@ -27,6 +29,16 @@ export class MetricsService {
             help: 'The number of total teams in cache right now',
         });
         this.registry.registerMetric(this.teamsCacheCounter);
+        this.newTeamsCounter = new Counter({
+            name: 'allbot_replies_add_team',
+            help: 'The number of new added teams',
+        });
+        this.registry.registerMetric(this.newTeamsCounter);
+        this.deletedTeamsCounter = new Counter({
+            name: 'allbot_replies_delete_team',
+            help: 'The number of teams bot deleted from',
+        });
+        this.registry.registerMetric(this.newTeamsCounter);
         if (!measureDefaultMetrics)
             return;
         collectDefaultMetrics({

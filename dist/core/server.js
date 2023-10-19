@@ -26,7 +26,7 @@ export class Server {
             throw new Error('Double listen');
         this.isListening = true;
         this.app.listen(Number(this.port), () => {
-            console.log(`Server is listening on port ${this.port}`);
+            console.log(`[LAUNCH] Server is listening on port ${this.port}`);
         });
     }
 }

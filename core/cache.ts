@@ -13,7 +13,7 @@ export class CacheService {
     private readonly metricsService: MetricsService,
     private readonly MAX_CACHE_SIZE: number
   ) {
-    console.log('Init Cache service')
+    console.log('[LAUNCH] Init Cache service')
   }
 
   public isInCache(chatId: Chat['id'], username: EnsuredUsername): boolean {
@@ -40,7 +40,7 @@ export class CacheService {
 
     this.cachedChats.clear()
 
-    console.log('Remove users from cache', this.MAX_CACHE_SIZE)
+    console.log('[CACHE] Remove users from cache', this.MAX_CACHE_SIZE)
   }
 
   private addToCacheSingle(
@@ -60,7 +60,7 @@ export class CacheService {
 
     const size = this.cachedChats.get(chatId)?.size ?? 0
     if (size % 10 === 0) {
-      console.log(`Cache size increased for chatId ${chatId}`, size)
+      console.log(`[CACHE] Cache size increased for chatId ${chatId}`, size)
     }
   }
 }

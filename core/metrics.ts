@@ -20,7 +20,7 @@ export class MetricsService {
 
   constructor(
     private readonly db: RedisClientType<any, any, any>,
-    measureDefaultMetrics = true
+    measureDefaultMetrics = false
   ) {
     console.log('[LAUNCH] Metrics service started')
 

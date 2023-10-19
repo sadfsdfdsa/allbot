@@ -10,7 +10,7 @@ export class MetricsService {
     teamsCacheCounter;
     newTeamsCounter;
     deletedTeamsCounter;
-    constructor(db, measureDefaultMetrics = true) {
+    constructor(db, measureDefaultMetrics = false) {
         this.db = db;
         console.log('[LAUNCH] Metrics service started');
         this.registry = new Registry();

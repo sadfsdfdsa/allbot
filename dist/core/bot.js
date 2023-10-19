@@ -89,7 +89,7 @@ Note, than you can send /feedback with features or problems.
       `;
             this.metricsService.commandsCounter.inc({
                 chatId: ctx.chat.id.toString(),
-                command: 'payment',
+                command: 'donate',
             });
             this.metricsService.updateLatestPaymentsCall(`${ctx.chat.id}`);
             ctx.reply(message, {

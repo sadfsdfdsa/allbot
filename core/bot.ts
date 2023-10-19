@@ -125,7 +125,7 @@ Note, than you can send /feedback with features or problems.
 
       this.metricsService.commandsCounter.inc({
         chatId: ctx.chat.id.toString(),
-        command: 'payment',
+        command: 'donate',
       })
 
       this.metricsService.updateLatestPaymentsCall(`${ctx.chat.id}`)
@@ -149,6 +149,11 @@ Note, than you can send /feedback with features or problems.
         console.log(
           `[FEEDBACK] Receive empty feedback from user ${from.username} in ${chatId}: ${feedback}`
         )
+
+        this.metricsService.commandsCounter.inc({
+          chatId: chatId.toString(),
+          command: 'feedback.empty',
+        })
 
         ctx.reply(`Add something in your feedback as feature or bug report`, {
           reply_to_message_id: messageId,

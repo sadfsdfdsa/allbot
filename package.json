@@ -1,6 +1,6 @@
 {
   "name": "allbot",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "bot for tg",
   "main": "index.ts",
   "type": "module",

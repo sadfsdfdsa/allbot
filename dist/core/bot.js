@@ -104,6 +104,10 @@ Note, than you can send /feedback with features or problems.
             const feedback = text.split('/feedback')[1] || undefined;
             if (!feedback) {
                 console.log(`[FEEDBACK] Receive empty feedback from user ${from.username} in ${chatId}: ${feedback}`);
+                this.metricsService.commandsCounter.inc({
+                    chatId: chatId.toString(),
+                    command: 'feedback.empty',
+                });
                 ctx.reply(`Add something in your feedback as feature or bug report`, {
                     reply_to_message_id: messageId,
                 });

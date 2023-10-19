@@ -20,12 +20,12 @@ export class MetricsService {
         });
         this.registry.registerMetric(this.replyCounter);
         this.cacheCounter = new Counter({
-            name: 'allbot_replies_cache',
+            name: 'allbot_users_cache',
             help: 'The number of total users in cache right now',
         });
         this.registry.registerMetric(this.cacheCounter);
         this.teamsCacheCounter = new Counter({
-            name: 'allbot_replies_team_cache',
+            name: 'allbot_teams_cache',
             help: 'The number of total teams in cache right now',
         });
         this.registry.registerMetric(this.teamsCacheCounter);

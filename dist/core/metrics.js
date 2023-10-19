@@ -8,13 +8,8 @@ export class MetricsService {
     replyCounter;
     cacheCounter;
     teamsCacheCounter;
-    newTeamsCounter;
-    deletedTeamsCounter;
-    replyPaymentCounter;
-    commandDonateCounter;
-    commandFeedbackCounter;
-    commandCodeCounter;
-    commandPrivacyCounter;
+    groupsCounter;
+    commandsCounter;
     constructor(db, measureDefaultMetrics = false) {
         this.db = db;
         console.log('[LAUNCH] Metrics service started');
@@ -22,16 +17,13 @@ export class MetricsService {
         this.replyCounter = new Counter({
             name: 'allbot_replies_counter',
             help: 'The number of total replies of bot',
+            labelNames: ['chatId', 'withPayments']
         });
         this.registry.registerMetric(this.replyCounter);
-        this.replyPaymentCounter = new Counter({
-            name: 'allbot_replies_payment_counter',
-            help: 'The number of include payments replies',
-        });
-        this.registry.registerMetric(this.replyPaymentCounter);
         this.cacheCounter = new Counter({
             name: 'allbot_users_cache',
             help: 'The number of total users in cache right now',
+            labelNames: ['chatId']
         });
         this.registry.registerMetric(this.cacheCounter);
         this.teamsCacheCounter = new Counter({
@@ -39,36 +31,18 @@ export class MetricsService {
             help: 'The number of total teams in cache right now',
         });
         this.registry.registerMetric(this.teamsCacheCounter);
-        this.newTeamsCounter = new Counter({
-            name: 'allbot_add_team',
-            help: 'The number of new added teams',
+        this.groupsCounter = new Counter({
+            name: 'allbot_groups',
+            help: 'The number of new added/deleted groups',
+            labelNames: ['action']
         });
-        this.registry.registerMetric(this.newTeamsCounter);
-        this.deletedTeamsCounter = new Counter({
-            name: 'allbot_delete_team',
-            help: 'The number of teams bot deleted from',
+        this.registry.registerMetric(this.groupsCounter);
+        this.commandsCounter = new Counter({
+            name: 'allbot_command_call',
+            help: 'The number of calls of commands',
+            labelNames: ['command', 'chatId']
         });
-        this.registry.registerMetric(this.deletedTeamsCounter);
-        this.commandDonateCounter = new Counter({
-            name: 'allbot_command_donate',
-            help: 'The number of calls /donate',
-        });
-        this.registry.registerMetric(this.commandDonateCounter);
-        this.commandFeedbackCounter = new Counter({
-            name: 'allbot_command_feedback',
-            help: 'The number of not empty calls /feedback',
-        });
-        this.registry.registerMetric(this.commandFeedbackCounter);
-        this.commandCodeCounter = new Counter({
-            name: 'allbot_command_code',
-            help: 'The number of calls /code',
-        });
-        this.registry.registerMetric(this.commandCodeCounter);
-        this.commandPrivacyCounter = new Counter({
-            name: 'allbot_command_privacy',
-            help: 'The number of calls /privacy',
-        });
-        this.registry.registerMetric(this.commandPrivacyCounter);
+        this.registry.registerMetric(this.commandsCounter);
         if (!measureDefaultMetrics)
             return;
         collectDefaultMetrics({

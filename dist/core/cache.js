@@ -34,7 +34,9 @@ export class CacheService {
     addToCacheSingle(chatId, username) {
         if (this.isInCache(chatId, username))
             return;
-        this.metricsService.cacheCounter.inc();
+        this.metricsService.cacheCounter.inc({
+            chatId: chatId.toString(),
+        });
         if (!this.cachedChats.has(chatId)) {
             this.cachedChats.set(chatId, new Set());
             this.metricsService.teamsCacheCounter.inc();

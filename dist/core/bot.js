@@ -69,12 +69,9 @@ export class Bot {
         const thisBot = members.find((user) => user.id === this.bot.botInfo?.id);
         if (!thisBot)
             return;
-        if (action === 'add') {
-            this.metricsService.newTeamsCounter.inc();
-        }
-        else {
-            this.metricsService.deletedTeamsCounter.inc();
-        }
+        this.metricsService.groupsCounter.inc({
+            action: action,
+        });
         console.log(`[TEAM_CHANGE] Bot ${action} in ${chatId}`);
     }
     registerDonateCommand() {
@@ -90,7 +87,10 @@ Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code>
 Thank you for using and help!
 Note, than you can send /feedback with features or problems.
       `;
-            this.metricsService.commandDonateCounter.inc();
+            this.metricsService.commandsCounter.inc({
+                chatId: ctx.chat.id.toString(),
+                command: 'payment',
+            });
             this.metricsService.updateLatestPaymentsCall(`${ctx.chat.id}`);
             ctx.reply(message, {
                 reply_to_message_id: ctx.message.message_id,
@@ -110,7 +110,10 @@ Note, than you can send /feedback with features or problems.
                 return;
             }
             console.log(`[FEEDBACK] Receive feedback from user ${from.username} in ${chatId}: ${feedback}`);
-            this.metricsService.commandFeedbackCounter.inc();
+            this.metricsService.commandsCounter.inc({
+                chatId: chatId.toString(),
+                command: 'feedback',
+            });
             ctx.reply(`Your review has been successfully registered, we will contact you, thank you!`, {
                 reply_to_message_id: messageId,
             });
@@ -130,7 +133,10 @@ We don't read your messages, don't log data about you in public systems and 3th 
 You can view the project's codebase using /code.
 Be careful when using unfamiliar bots in your communication, it can be dangerous!
       `;
-            this.metricsService.commandPrivacyCounter.inc();
+            this.metricsService.commandsCounter.inc({
+                chatId: ctx.chat.id.toString(),
+                command: 'privacy',
+            });
             ctx.reply(message, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
@@ -140,7 +146,10 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
     registerCodeCommand() {
         this.bot.command('code', (ctx) => {
             console.log('[CODE] Send code info');
-            this.metricsService.commandCodeCounter.inc();
+            this.metricsService.commandsCounter.inc({
+                chatId: ctx.chat.id.toString(),
+                command: 'code',
+            });
             ctx.reply(`I am an opensource project, feel free to reuse code or make bot better via /feedback.\nGithub link: https://github.com/sadfsdfdsa/allbot`, {
                 reply_to_message_id: ctx.message.message_id,
             });
@@ -168,15 +177,17 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
             const includePay = usernames.length >= 10;
             console.log(`[ALL] Mention with pattern in group for ${usernames.length} people, includePay=${includePay}`, chatId);
             const str = usernames.map((username) => `@${username} `);
-            this.metricsService.replyCounter.inc();
             let msg = `All from ${from.username}: ${str}`;
             if (includePay) {
-                this.metricsService.replyPaymentCounter.inc();
                 msg =
                     msg +
                         `
         \nSupport bot: /donate`;
             }
+            this.metricsService.replyCounter.inc({
+                chatId: chatId.toString(),
+                withPayments: String(includePay),
+            });
             ctx.reply(msg, {
                 reply_to_message_id: messageId,
             });

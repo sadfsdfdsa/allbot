@@ -125,6 +125,8 @@ Thank you for using and help!
 Note, than you can send /feedback with features or problems.
       `
 
+      this.metricsService.commandDonateCounter.inc()
+
       this.metricsService.updateLatestPaymentsCall(`${ctx.chat.id}`)
 
       ctx.reply(message, {
@@ -157,6 +159,8 @@ Note, than you can send /feedback with features or problems.
         `[FEEDBACK] Receive feedback from user ${from.username} in ${chatId}: ${feedback}`
       )
 
+      this.metricsService.commandFeedbackCounter.inc()
+
       ctx.reply(
         `Your review has been successfully registered, we will contact you, thank you!`,
         {
@@ -186,6 +190,8 @@ You can view the project's codebase using /code.
 Be careful when using unfamiliar bots in your communication, it can be dangerous!
       `
 
+      this.metricsService.commandPrivacyCounter.inc()
+
       ctx.reply(message, {
         reply_to_message_id: ctx.message.message_id,
         parse_mode: 'HTML',
@@ -196,6 +202,8 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
   private registerCodeCommand(): void {
     this.bot.command('code', (ctx) => {
       console.log('[CODE] Send code info')
+
+      this.metricsService.commandCodeCounter.inc()
 
       ctx.reply(
         `I am an opensource project, feel free to reuse code or make bot better via /feedback.\nGithub link: https://github.com/sadfsdfdsa/allbot`,
@@ -252,6 +260,8 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
       let msg = `All from ${from.username}: ${str}`
 
       if (includePay) {
+        this.metricsService.replyPaymentCounter.inc()
+
         msg =
           msg +
           `

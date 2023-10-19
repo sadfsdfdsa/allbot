@@ -18,6 +18,16 @@ export class MetricsService {
 
   public readonly deletedTeamsCounter: Counter
 
+  public readonly replyPaymentCounter: Counter
+
+  public readonly commandDonateCounter: Counter
+
+  public readonly commandFeedbackCounter: Counter
+
+  public readonly commandCodeCounter: Counter
+
+  public readonly commandPrivacyCounter: Counter
+
   constructor(
     private readonly db: RedisClientType<any, any, any>,
     measureDefaultMetrics = false
@@ -31,6 +41,12 @@ export class MetricsService {
       help: 'The number of total replies of bot',
     })
     this.registry.registerMetric(this.replyCounter)
+
+    this.replyPaymentCounter = new Counter({
+      name: 'allbot_replies_payment_counter',
+      help: 'The number of include payments replies',
+    })
+    this.registry.registerMetric(this.replyPaymentCounter)
 
     this.cacheCounter = new Counter({
       name: 'allbot_users_cache',
@@ -55,6 +71,30 @@ export class MetricsService {
       help: 'The number of teams bot deleted from',
     })
     this.registry.registerMetric(this.deletedTeamsCounter)
+
+    this.commandDonateCounter = new Counter({
+      name: 'allbot_command_donate',
+      help: 'The number of calls /donate',
+    })
+    this.registry.registerMetric(this.commandDonateCounter)
+
+    this.commandFeedbackCounter = new Counter({
+      name: 'allbot_command_feedback',
+      help: 'The number of not empty calls /feedback',
+    })
+    this.registry.registerMetric(this.commandFeedbackCounter)
+
+    this.commandCodeCounter = new Counter({
+      name: 'allbot_command_code',
+      help: 'The number of calls /code',
+    })
+    this.registry.registerMetric(this.commandCodeCounter)
+
+    this.commandPrivacyCounter = new Counter({
+      name: 'allbot_command_privacy',
+      help: 'The number of calls /privacy',
+    })
+    this.registry.registerMetric(this.commandPrivacyCounter)
 
     if (!measureDefaultMetrics) return
 

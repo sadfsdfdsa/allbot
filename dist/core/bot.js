@@ -90,6 +90,7 @@ Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code>
 Thank you for using and help!
 Note, than you can send /feedback with features or problems.
       `;
+            this.metricsService.commandDonateCounter.inc();
             this.metricsService.updateLatestPaymentsCall(`${ctx.chat.id}`);
             ctx.reply(message, {
                 reply_to_message_id: ctx.message.message_id,
@@ -109,6 +110,7 @@ Note, than you can send /feedback with features or problems.
                 return;
             }
             console.log(`[FEEDBACK] Receive feedback from user ${from.username} in ${chatId}: ${feedback}`);
+            this.metricsService.commandFeedbackCounter.inc();
             ctx.reply(`Your review has been successfully registered, we will contact you, thank you!`, {
                 reply_to_message_id: messageId,
             });
@@ -128,6 +130,7 @@ We don't read your messages, don't log data about you in public systems and 3th 
 You can view the project's codebase using /code.
 Be careful when using unfamiliar bots in your communication, it can be dangerous!
       `;
+            this.metricsService.commandPrivacyCounter.inc();
             ctx.reply(message, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
@@ -137,6 +140,7 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
     registerCodeCommand() {
         this.bot.command('code', (ctx) => {
             console.log('[CODE] Send code info');
+            this.metricsService.commandCodeCounter.inc();
             ctx.reply(`I am an opensource project, feel free to reuse code or make bot better via /feedback.\nGithub link: https://github.com/sadfsdfdsa/allbot`, {
                 reply_to_message_id: ctx.message.message_id,
             });
@@ -167,6 +171,7 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
             this.metricsService.replyCounter.inc();
             let msg = `All from ${from.username}: ${str}`;
             if (includePay) {
+                this.metricsService.replyPaymentCounter.inc();
                 msg =
                     msg +
                         `

@@ -27,12 +27,12 @@ export class Bot {
                 description: 'Get crypto payments accounts for supporting the project',
             },
             {
-                command: 'feedback',
-                description: 'Send feedback or bug reports (English please)',
+                command: 'help',
+                description: 'Help information',
             },
             {
-                command: 'code',
-                description: 'Get link for bot opensource code',
+                command: 'feedback',
+                description: 'Send feedback or bug reports (English please)',
             },
             {
                 command: 'privacy',
@@ -42,12 +42,24 @@ export class Bot {
         this.registerDonateCommand();
         this.registerFeedbackCommand();
         this.registerPrivacyCommand();
-        this.registerCodeCommand();
+        this.registerHelpCommand();
         // Should be last for not overriding commands below
         this.registerHandleMessage();
-        this.bot.on(message('new_chat_members'), ({ message, chat }) => {
+        this.bot.on(message('new_chat_members'), (ctx) => {
+            const { chat, message } = ctx;
             this.handleAddMembers(chat.id, message.new_chat_members);
-            this.tryDetectBotAddOrDelete(chat.id, message.new_chat_members, 'add');
+            const isNewGroup = this.tryDetectBotAddOrDelete(chat.id, message.new_chat_members, 'add');
+            if (!isNewGroup)
+                return;
+            const msg = `
+Hello everyone!
+This is a bot to improve your experience, just like Slack or other instant messengers. You can mention /all chat participants with one command.
+But remember that I add each person to the mention only after his first message after I joined, so if you don’t see yourself in my mentions, at least write '+' in this chat.
+You can help to improve the Bot by sending /feedback or /donate for servers.
+`;
+            ctx.reply(msg, {
+                parse_mode: 'HTML',
+            });
         });
         this.bot.on(message('left_chat_member'), ({ chat, message }) => {
             this.handleDelete(chat.id, message.left_chat_member);
@@ -68,11 +80,13 @@ export class Bot {
     tryDetectBotAddOrDelete(chatId, members, action) {
         const thisBot = members.find((user) => user.id === this.bot.botInfo?.id);
         if (!thisBot)
-            return;
+            return false;
         this.metricsService.groupsCounter.inc({
             action: action,
+            chatId: action === 'delete' ? chatId : undefined,
         });
         console.log(`[TEAM_CHANGE] Bot ${action} in ${chatId}`);
+        return true;
     }
     registerDonateCommand() {
         this.bot.command('donate', (ctx) => {
@@ -134,7 +148,7 @@ Note, than you can send /feedback with features or problems.
 What do we use? Identifiers of your groups to store data about participants in them: usernames and identifiers to correctly call all users of the group.
 All data is transmitted only via encrypted channels and is not used for other purposes.
 We don't read your messages, don't log data about you in public systems and 3th party services except safe hosting and database.
-You can view the project's codebase using /code.
+You can view the project's codebase using Github -  https://github.com/sadfsdfdsa/allbot (also can Star or Fork the Bot project).
 Be careful when using unfamiliar bots in your communication, it can be dangerous!
       `;
             this.metricsService.commandsCounter.inc({
@@ -147,15 +161,33 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
             });
         });
     }
-    registerCodeCommand() {
-        this.bot.command('code', (ctx) => {
-            console.log('[CODE] Send code info');
+    registerHelpCommand() {
+        this.bot.command('help', (ctx) => {
+            console.log('[HELP] Send help info');
             this.metricsService.commandsCounter.inc({
                 chatId: ctx.chat.id.toString(),
-                command: 'code',
+                command: 'help',
             });
-            ctx.reply(`I am an opensource project, feel free to reuse code or make bot better via /feedback.\nGithub link: https://github.com/sadfsdfdsa/allbot`, {
+            const msg = `
+<strong>How can I mention chat participants?</strong>
+You can mention all your chat participants via '/all' or via mention '@all' in your any message.
+For example: 'Wanna play some games @all?'
+
+<strong>Why doesn't the bot mention me?</strong>
+Bot can only mention you after your first text message after the bot joins the group.
+
+<strong>Why Bot add /donate to message?</strong>
+You can use bot for Free, but servers are paid, so you can also support project.
+Bot adds /donate only for big groups - more than 10 people.
+
+Commands:
+/donate - help project to pay for servers
+/feedback - give feature requests or report problems
+/privacy - personal data usage and codebase of the Bot
+`;
+            ctx.reply(msg, {
                 reply_to_message_id: ctx.message.message_id,
+                parse_mode: 'HTML',
             });
         });
     }
@@ -180,7 +212,10 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
                 return;
             const includePay = usernames.length >= 10;
             console.log(`[ALL] Mention with pattern in group for ${usernames.length} people, includePay=${includePay}`, chatId);
-            const str = usernames.map((username) => `@${username} `);
+            const str = usernames
+                .filter((username) => username !== from.username)
+                .map((username) => `@${username}`)
+                .join(', ');
             let msg = `All from ${from.username}: ${str}`;
             if (includePay) {
                 msg =

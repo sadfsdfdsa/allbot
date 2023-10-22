@@ -14,6 +14,8 @@ export class MetricsService {
 
   public readonly teamsCacheCounter: Counter
 
+  public readonly cacheClearingCounter: Counter
+
   public readonly groupsCounter: Counter
 
   public readonly commandsCounter: Counter
@@ -33,6 +35,13 @@ export class MetricsService {
     })
     this.registry.registerMetric(this.replyCounter)
 
+    this.cacheClearingCounter = new Counter({
+      name: 'allbot_cache_clearing',
+      help: 'The number of total replies of bot',
+      labelNames: ['time']
+    })
+    this.registry.registerMetric(this.cacheClearingCounter)
+
     this.cacheCounter = new Counter({
       name: 'allbot_users_cache',
       help: 'The number of total users in cache right now',
@@ -49,7 +58,7 @@ export class MetricsService {
     this.groupsCounter = new Counter({
       name: 'allbot_groups',
       help: 'The number of new added/deleted groups',
-      labelNames: ['action']
+      labelNames: ['action', 'chatId']
     })
     this.registry.registerMetric(this.groupsCounter)
 

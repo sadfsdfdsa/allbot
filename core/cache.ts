@@ -38,6 +38,11 @@ export class CacheService {
     this.metricsService.cacheCounter.reset()
     this.metricsService.teamsCacheCounter.reset()
 
+    const date = new Date()
+    this.metricsService.cacheClearingCounter.inc({
+      time: date.toLocaleString('ru-RU', { timeZone: 'Asia/Yekaterinburg' }),
+    })
+
     this.cachedChats.clear()
 
     console.log('[CACHE] Remove users from cache', this.MAX_CACHE_SIZE)

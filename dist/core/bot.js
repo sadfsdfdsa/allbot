@@ -170,7 +170,7 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
             });
             const msg = `
 <strong>How can I mention chat participants?</strong>
-You can mention all your chat participants via '/all' or via mention '@all' in your any message.
+You can mention all chat participants using "/all" or by mentioning "@all" anywhere in the message.
 For example: 'Wanna play some games @all?'
 
 <strong>Why doesn't the bot mention me?</strong>
@@ -181,9 +181,9 @@ You can use bot for Free, but servers are paid, so you can also support project.
 Bot adds /donate only for big groups - more than 10 people.
 
 Commands:
-/donate - help project to pay for servers
-/feedback - give feature requests or report problems
-/privacy - personal data usage and codebase of the Bot
+/donate - help the project pay for the servers
+/feedback - send feature requests or report problems
+/privacy - info about personal data usage and codebase of the Bot
 `;
             ctx.reply(msg, {
                 reply_to_message_id: ctx.message.message_id,

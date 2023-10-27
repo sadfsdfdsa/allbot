@@ -82,8 +82,8 @@ You can help to improve the Bot by sending /feedback or /donate for servers.
         if (!thisBot)
             return false;
         this.metricsService.groupsCounter.inc({
-            action: action,
-            chatId: action === 'delete' ? chatId : undefined,
+            action,
+            chatId,
         });
         console.log(`[TEAM_CHANGE] Bot ${action} in ${chatId}`);
         return true;

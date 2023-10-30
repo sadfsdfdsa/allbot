@@ -11,6 +11,7 @@ export class MetricsService {
     cacheClearingCounter;
     groupsCounter;
     commandsCounter;
+    dbOpsCounter;
     constructor(db, measureDefaultMetrics = false) {
         this.db = db;
         console.log('[LAUNCH] Metrics service started');
@@ -41,7 +42,7 @@ export class MetricsService {
         this.groupsCounter = new Counter({
             name: 'allbot_groups',
             help: 'The number of new added/deleted groups',
-            labelNames: ['action', 'chatId']
+            labelNames: ['action', 'chatId', 'time']
         });
         this.registry.registerMetric(this.groupsCounter);
         this.commandsCounter = new Counter({
@@ -50,6 +51,12 @@ export class MetricsService {
             labelNames: ['command', 'chatId']
         });
         this.registry.registerMetric(this.commandsCounter);
+        this.dbOpsCounter = new Counter({
+            name: 'allbot_database_operations',
+            help: 'The number of calls of database calls',
+            labelNames: ['action']
+        });
+        this.registry.registerMetric(this.dbOpsCounter);
         if (!measureDefaultMetrics)
             return;
         collectDefaultMetrics({

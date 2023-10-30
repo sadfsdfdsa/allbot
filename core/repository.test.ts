@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended'
+import { mock, mockDeep } from 'jest-mock-extended'
 import type { RedisClientType } from 'redis'
 import { UserRepository } from './repository.js'
 import { User } from 'telegraf/types'
@@ -7,12 +7,12 @@ import { MetricsService } from './metrics.js'
 
 describe('repository', () => {
   let dbMock = mock<RedisClientType<any, any, any>>()
-  let metricsMock = mock<MetricsService>()
+  let metricsMock = mockDeep<MetricsService>()
   let cacheMock = mock<CacheService>()
 
   beforeEach(() => {
     dbMock = mock<RedisClientType<any, any, any>>()
-    metricsMock = mock<MetricsService>()
+    metricsMock = mockDeep<MetricsService>()
     cacheMock = mock<CacheService>()
   })
 

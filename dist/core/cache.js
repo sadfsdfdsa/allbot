@@ -9,9 +9,16 @@ export class CacheService {
         this.metricsService = metricsService;
         this.MAX_CACHE_SIZE = MAX_CACHE_SIZE;
         console.log('[LAUNCH] Init Cache service');
+        const date = new Date();
+        this.metricsService.cacheClearingCounter.inc({
+            time: date.toLocaleString('ru-RU', { timeZone: 'Asia/Yekaterinburg' }),
+        });
     }
     isInCache(chatId, username) {
         return Boolean(this.cachedChats.get(chatId)?.has(username));
+    }
+    removeFromCache(chatId) {
+        return this.cachedChats.delete(chatId);
     }
     /**
      * @returns cache size for chat
@@ -40,6 +47,9 @@ export class CacheService {
             return;
         this.metricsService.cacheCounter.inc({
             chatId: chatId.toString(),
+        });
+        this.metricsService.cacheCounter.inc({
+            chatId: 'all_chats',
         });
         if (!this.cachedChats.has(chatId)) {
             this.cachedChats.set(chatId, new Set());

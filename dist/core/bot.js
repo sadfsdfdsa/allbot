@@ -81,11 +81,16 @@ You can help to improve the Bot by sending /feedback or /donate for servers.
         const thisBot = members.find((user) => user.id === this.bot.botInfo?.id);
         if (!thisBot)
             return false;
+        const date = new Date();
         this.metricsService.groupsCounter.inc({
             action,
             chatId,
+            time: date.toLocaleString('ru-RU', { timeZone: 'Asia/Yekaterinburg' }),
         });
         console.log(`[TEAM_CHANGE] Bot ${action} in ${chatId}`);
+        if (action === 'delete') {
+            this.userRepository.removeTeam(chatId);
+        }
         return true;
     }
     registerDonateCommand() {
@@ -226,6 +231,9 @@ Commands:
             this.metricsService.replyCounter.inc({
                 chatId: chatId.toString(),
                 withPayments: String(includePay),
+            });
+            this.metricsService.replyCounter.inc({
+                chatId: 'all_chats',
             });
             ctx.reply(msg, {
                 reply_to_message_id: messageId,

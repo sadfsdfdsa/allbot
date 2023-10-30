@@ -20,6 +20,8 @@ export class MetricsService {
 
   public readonly commandsCounter: Counter
 
+  public readonly dbOpsCounter: Counter
+
   constructor(
     private readonly db: RedisClientType<any, any, any>,
     measureDefaultMetrics = false
@@ -58,7 +60,7 @@ export class MetricsService {
     this.groupsCounter = new Counter({
       name: 'allbot_groups',
       help: 'The number of new added/deleted groups',
-      labelNames: ['action', 'chatId']
+      labelNames: ['action', 'chatId', 'time']
     })
     this.registry.registerMetric(this.groupsCounter)
 
@@ -68,6 +70,13 @@ export class MetricsService {
       labelNames: ['command', 'chatId']
     })
     this.registry.registerMetric(this.commandsCounter)
+
+    this.dbOpsCounter = new Counter({
+      name: 'allbot_database_operations',
+      help: 'The number of calls of database calls',
+      labelNames: ['action']
+    })
+    this.registry.registerMetric(this.dbOpsCounter)
 
     if (!measureDefaultMetrics) return
 

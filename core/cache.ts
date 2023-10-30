@@ -14,10 +14,19 @@ export class CacheService {
     private readonly MAX_CACHE_SIZE: number
   ) {
     console.log('[LAUNCH] Init Cache service')
+
+    const date = new Date()
+    this.metricsService.cacheClearingCounter.inc({
+      time: date.toLocaleString('ru-RU', { timeZone: 'Asia/Yekaterinburg' }),
+    })
   }
 
   public isInCache(chatId: Chat['id'], username: EnsuredUsername): boolean {
     return Boolean(this.cachedChats.get(chatId)?.has(username))
+  }
+
+  public removeFromCache(chatId: Chat['id']): boolean {
+    return this.cachedChats.delete(chatId)
   }
 
   /**
@@ -56,6 +65,10 @@ export class CacheService {
 
     this.metricsService.cacheCounter.inc({
       chatId: chatId.toString(),
+    })
+
+    this.metricsService.cacheCounter.inc({
+      chatId: 'all_chats',
     })
 
     if (!this.cachedChats.has(chatId)) {

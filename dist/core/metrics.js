@@ -15,23 +15,24 @@ export class MetricsService {
     constructor(db, measureDefaultMetrics = false) {
         this.db = db;
         console.log('[LAUNCH] Metrics service started');
+        this.startIntervalForResetMetrics();
         this.registry = new Registry();
         this.replyCounter = new Counter({
             name: 'allbot_replies_counter',
             help: 'The number of total replies of bot',
-            labelNames: ['chatId', 'withPayments']
+            labelNames: ['chatId', 'withPayments'],
         });
         this.registry.registerMetric(this.replyCounter);
         this.cacheClearingCounter = new Counter({
             name: 'allbot_cache_clearing',
             help: 'The number of total replies of bot',
-            labelNames: ['time']
+            labelNames: ['time'],
         });
         this.registry.registerMetric(this.cacheClearingCounter);
         this.cacheCounter = new Counter({
             name: 'allbot_users_cache',
             help: 'The number of total users in cache right now',
-            labelNames: ['chatId']
+            labelNames: ['chatId'],
         });
         this.registry.registerMetric(this.cacheCounter);
         this.teamsCacheCounter = new Counter({
@@ -42,19 +43,19 @@ export class MetricsService {
         this.groupsCounter = new Counter({
             name: 'allbot_groups',
             help: 'The number of new added/deleted groups',
-            labelNames: ['action', 'chatId', 'time']
+            labelNames: ['action', 'chatId', 'time'],
         });
         this.registry.registerMetric(this.groupsCounter);
         this.commandsCounter = new Counter({
             name: 'allbot_command_call',
             help: 'The number of calls of commands',
-            labelNames: ['command', 'chatId']
+            labelNames: ['command', 'chatId'],
         });
         this.registry.registerMetric(this.commandsCounter);
         this.dbOpsCounter = new Counter({
             name: 'allbot_database_operations',
             help: 'The number of calls of database calls',
-            labelNames: ['action']
+            labelNames: ['action'],
         });
         this.registry.registerMetric(this.dbOpsCounter);
         if (!measureDefaultMetrics)
@@ -81,5 +82,11 @@ export class MetricsService {
             metrics,
             contentType: this.registry.contentType,
         };
+    }
+    startIntervalForResetMetrics() {
+        setInterval(() => {
+            console.log('[METRICS] Reset metrics');
+            this.dbOpsCounter.reset();
+        }, 24 * 60 * 60 * 1000);
     }
 }

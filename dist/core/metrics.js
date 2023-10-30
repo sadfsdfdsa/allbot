@@ -12,10 +12,12 @@ export class MetricsService {
     groupsCounter;
     commandsCounter;
     dbOpsCounter;
-    constructor(db, measureDefaultMetrics = false) {
+    constructor(db, measureDefaultMetrics = false, includeIntervalForMetricsReset = true) {
         this.db = db;
         console.log('[LAUNCH] Metrics service started');
-        this.startIntervalForResetMetrics();
+        if (includeIntervalForMetricsReset) {
+            this.startIntervalForResetMetrics();
+        }
         this.registry = new Registry();
         this.replyCounter = new Counter({
             name: 'allbot_replies_counter',

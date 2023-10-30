@@ -5,7 +5,7 @@ import { createDB } from './db'
 
 const clientMock = mock<Awaited<ReturnType<typeof createDB>>>()
 
-const metricsService = new MetricsService(clientMock, false)
+const metricsService = new MetricsService(clientMock, false, false)
 
 describe('CacheService', () => {
   describe('#addToCache', () => {

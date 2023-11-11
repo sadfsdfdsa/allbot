@@ -34,7 +34,6 @@ export class CacheService {
         if (arr.length < this.MAX_CACHE_SIZE)
             return;
         this.metricsService.cacheCounter.reset();
-        this.metricsService.teamsCacheCounter.reset();
         const date = new Date();
         this.metricsService.cacheClearingCounter.inc({
             time: date.toLocaleString('ru-RU', { timeZone: 'Asia/Yekaterinburg' }),
@@ -48,12 +47,8 @@ export class CacheService {
         this.metricsService.cacheCounter.inc({
             chatId: chatId.toString(),
         });
-        this.metricsService.cacheCounter.inc({
-            chatId: 'all_chats',
-        });
         if (!this.cachedChats.has(chatId)) {
             this.cachedChats.set(chatId, new Set());
-            this.metricsService.teamsCacheCounter.inc();
         }
         this.cachedChats.get(chatId)?.add(username);
         const size = this.cachedChats.get(chatId)?.size ?? 0;

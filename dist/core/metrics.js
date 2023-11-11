@@ -7,7 +7,6 @@ export class MetricsService {
     registry;
     replyCounter;
     cacheCounter;
-    teamsCacheCounter;
     cacheClearingCounter;
     groupsCounter;
     commandsCounter;
@@ -37,11 +36,6 @@ export class MetricsService {
             labelNames: ['chatId'],
         });
         this.registry.registerMetric(this.cacheCounter);
-        this.teamsCacheCounter = new Counter({
-            name: 'allbot_teams_cache',
-            help: 'The number of total teams in cache right now',
-        });
-        this.registry.registerMetric(this.teamsCacheCounter);
         this.groupsCounter = new Counter({
             name: 'allbot_groups',
             help: 'The number of new added/deleted groups',

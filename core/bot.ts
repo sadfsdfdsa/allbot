@@ -333,10 +333,6 @@ Commands:
         withPayments: String(includePay),
       })
 
-      this.metricsService.replyCounter.inc({
-        chatId: 'all_chats',
-      })
-
       ctx.reply(msg, {
         reply_to_message_id: messageId,
       })

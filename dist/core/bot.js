@@ -212,15 +212,12 @@ Commands:
             if (!isCallAll)
                 return;
             const chatUsernames = await this.userRepository.getUsernamesByChatId(chatId);
-            const usernames = Object.values(chatUsernames);
+            const usernames = Object.values(chatUsernames).filter((username) => username !== from.username);
             if (!usernames.length)
                 return;
             const includePay = usernames.length >= 10;
             console.log(`[ALL] Mention with pattern in group for ${usernames.length} people, includePay=${includePay}`, chatId);
-            const str = usernames
-                .filter((username) => username !== from.username)
-                .map((username) => `@${username}`)
-                .join(', ');
+            const str = usernames.map((username) => `@${username}`).join(', ');
             let msg = `All from ${from.username}: ${str}`;
             if (includePay) {
                 msg =
@@ -232,6 +229,7 @@ Commands:
                 chatId: chatId.toString(),
                 withPayments: String(includePay),
             });
+            this.metricsService.replyUsersHistogram.observe(usernames.length);
             ctx.reply(msg, {
                 reply_to_message_id: messageId,
             });

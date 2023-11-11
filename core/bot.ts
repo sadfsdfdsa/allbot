@@ -303,7 +303,9 @@ Commands:
       const chatUsernames = await this.userRepository.getUsernamesByChatId(
         chatId
       )
-      const usernames = Object.values(chatUsernames)
+      const usernames = Object.values(chatUsernames).filter(
+        (username) => username !== from.username
+      )
 
       if (!usernames.length) return
 
@@ -314,10 +316,7 @@ Commands:
         chatId
       )
 
-      const str = usernames
-        .filter((username) => username !== from.username)
-        .map((username) => `@${username}`)
-        .join(', ')
+      const str = usernames.map((username) => `@${username}`).join(', ')
 
       let msg = `All from ${from.username}: ${str}`
 
@@ -332,6 +331,8 @@ Commands:
         chatId: chatId.toString(),
         withPayments: String(includePay),
       })
+
+      this.metricsService.replyUsersHistogram.observe(usernames.length)
 
       ctx.reply(msg, {
         reply_to_message_id: messageId,

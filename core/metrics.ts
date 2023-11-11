@@ -1,4 +1,4 @@
-import { Registry, Counter, collectDefaultMetrics } from 'prom-client'
+import { Registry, Counter, collectDefaultMetrics, Histogram } from 'prom-client'
 import { RedisClientType } from 'redis'
 
 const KEY_FOR_TIMESTAMP = '!TIMESTAMP'
@@ -20,6 +20,8 @@ export class MetricsService {
 
   public readonly dbOpsCounter: Counter
 
+  public readonly replyUsersHistogram: Histogram
+
   constructor(
     private readonly db: RedisClientType<any, any, any>,
     measureDefaultMetrics = false,
@@ -34,6 +36,13 @@ export class MetricsService {
       labelNames: ['chatId', 'withPayments'],
     })
     this.registry.registerMetric(this.replyCounter)
+
+    this.replyUsersHistogram = new Histogram({
+      name: 'allbot_replies_histogram',
+      help: 'The number of total replies of bot',
+      buckets: [1, 5, 10, 25, 50, 100]
+    })
+    this.registry.registerMetric(this.replyUsersHistogram)
 
     this.cacheClearingCounter = new Counter({
       name: 'allbot_cache_clearing',

@@ -23,13 +23,8 @@ export class MetricsService {
   constructor(
     private readonly db: RedisClientType<any, any, any>,
     measureDefaultMetrics = false,
-    includeIntervalForMetricsReset = true
   ) {
     console.log('[LAUNCH] Metrics service started')
-
-    if (includeIntervalForMetricsReset) {
-      this.startIntervalForResetMetrics()
-    }
 
     this.registry = new Registry()
 
@@ -108,12 +103,5 @@ export class MetricsService {
       metrics,
       contentType: this.registry.contentType,
     }
-  }
-
-  private startIntervalForResetMetrics(): void {
-    setInterval(() => {
-      console.log('[METRICS] Reset metrics')
-      this.dbOpsCounter.reset()
-    }, 24 * 60 * 60 * 1000)
   }
 }

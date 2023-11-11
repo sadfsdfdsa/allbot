@@ -11,12 +11,9 @@ export class MetricsService {
     groupsCounter;
     commandsCounter;
     dbOpsCounter;
-    constructor(db, measureDefaultMetrics = false, includeIntervalForMetricsReset = true) {
+    constructor(db, measureDefaultMetrics = false) {
         this.db = db;
         console.log('[LAUNCH] Metrics service started');
-        if (includeIntervalForMetricsReset) {
-            this.startIntervalForResetMetrics();
-        }
         this.registry = new Registry();
         this.replyCounter = new Counter({
             name: 'allbot_replies_counter',
@@ -78,11 +75,5 @@ export class MetricsService {
             metrics,
             contentType: this.registry.contentType,
         };
-    }
-    startIntervalForResetMetrics() {
-        setInterval(() => {
-            console.log('[METRICS] Reset metrics');
-            this.dbOpsCounter.reset();
-        }, 24 * 60 * 60 * 1000);
     }
 }

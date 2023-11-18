@@ -38,6 +38,7 @@ export class CacheService {
         this.metricsService.cacheClearingCounter.inc({
             time: date.toLocaleString('ru-RU', { timeZone: 'Asia/Yekaterinburg' }),
         });
+        this.metricsService.cacheCounter.reset();
         this.cachedChats.clear();
         console.log('[CACHE] Remove users from cache', this.MAX_CACHE_SIZE);
     }

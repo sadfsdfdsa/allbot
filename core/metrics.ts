@@ -20,7 +20,9 @@ export class MetricsService {
 
   public readonly dbOpsCounter: Counter
 
-  public readonly replyUsersHistogram: Histogram
+  public readonly replyUsersCountHistogram: Histogram
+
+  public readonly replyUsersTimeHistogram: Histogram
 
   constructor(
     private readonly db: RedisClientType<any, any, any>,
@@ -37,12 +39,19 @@ export class MetricsService {
     })
     this.registry.registerMetric(this.replyCounter)
 
-    this.replyUsersHistogram = new Histogram({
-      name: 'allbot_replies_histogram',
-      help: 'The number of total replies of bot',
-      buckets: [1, 5, 10, 25, 50, 100]
+    this.replyUsersCountHistogram = new Histogram({
+      name: 'allbot_replies_users_count_histogram',
+      help: 'Buckets with count of users per mention',
+      buckets: [1, 5, 10, 25, 50, 100, 200]
     })
-    this.registry.registerMetric(this.replyUsersHistogram)
+    this.registry.registerMetric(this.replyUsersCountHistogram)
+
+    this.replyUsersTimeHistogram = new Histogram({
+      name: 'allbot_replies_time_histogram',
+      help: 'Time of each mention in ms',
+      buckets: [500, 1000, 5000, 10000, 20000, 50000]
+    })
+    this.registry.registerMetric(this.replyUsersTimeHistogram)
 
     this.cacheClearingCounter = new Counter({
       name: 'allbot_cache_clearing',

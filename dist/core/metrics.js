@@ -11,7 +11,8 @@ export class MetricsService {
     groupsCounter;
     commandsCounter;
     dbOpsCounter;
-    replyUsersHistogram;
+    replyUsersCountHistogram;
+    replyUsersTimeHistogram;
     constructor(db, measureDefaultMetrics = false) {
         this.db = db;
         console.log('[LAUNCH] Metrics service started');
@@ -22,12 +23,18 @@ export class MetricsService {
             labelNames: ['chatId', 'withPayments'],
         });
         this.registry.registerMetric(this.replyCounter);
-        this.replyUsersHistogram = new Histogram({
-            name: 'allbot_replies_histogram',
-            help: 'The number of total replies of bot',
-            buckets: [1, 5, 10, 25, 50, 100]
+        this.replyUsersCountHistogram = new Histogram({
+            name: 'allbot_replies_users_count_histogram',
+            help: 'Buckets with count of users per mention',
+            buckets: [1, 5, 10, 25, 50, 100, 200]
         });
-        this.registry.registerMetric(this.replyUsersHistogram);
+        this.registry.registerMetric(this.replyUsersCountHistogram);
+        this.replyUsersTimeHistogram = new Histogram({
+            name: 'allbot_replies_time_histogram',
+            help: 'Time of each mention in ms',
+            buckets: [500, 1000, 5000, 10000, 20000, 50000]
+        });
+        this.registry.registerMetric(this.replyUsersTimeHistogram);
         this.cacheClearingCounter = new Counter({
             name: 'allbot_cache_clearing',
             help: 'The number of total replies of bot',

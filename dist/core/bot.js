@@ -168,18 +168,21 @@ export class Bot {
         this.bot.command('help', (ctx) => {
             console.log('[HELP] Send help info');
             const msg = `
-❔ How can I mention chat participants?
+<b>❔ How can I mention chat participants?</b>
 You can mention all chat participants using "/all" or by mentioning "@all" anywhere in the message.
 For example: <i>Wanna play some games @all?</i>
 
-❔ Why doesn't the bot mention me?
+<b>❔ Why does the bot give out so many messages?</b>
+Telegram has a limit on mentions - only 5 users receive notifications per message.
+
+<b>❔ Why doesn't the bot mention me?</b>
 Bot can only mention you after your first text message after the bot joins the group.
 
-❔ Why Bot add /donate to message?
+<b>❔ Why Bot add /donate to message?</b>
 You can use bot for Free, but servers are paid, so you can also support project.
 Bot adds /donate only for big groups - more than 10 people.
 
-👀 Commands:
+<strong>👀 Commands:</strong>
 /donate - help the project pay for the servers 🫰
 /feedback - send feature requests or report problems ✍️
 /privacy - info about personal data usage and codebase of the Bot 🔐
@@ -197,12 +200,13 @@ Bot adds /donate only for big groups - more than 10 people.
     registerHandleMessage() {
         this.bot.on(message('text'), async (ctx) => {
             const { message: { from, text, message_id: messageId }, chat: { id: chatId }, } = ctx;
-            const startText = `🔊 All from <a href="tg://user?id=${from.id}">${from.username}</a>:`;
+            const START_TIME = Date.now();
             if (!isChatGroup(chatId)) {
                 console.log(`[DIRECT_MSG] Direct message from ${ctx.message.text}`, from.username);
                 ctx.reply(`👥 Add me to your group, here is example @all mention for you:`, {
                     parse_mode: 'HTML',
                 });
+                const startText = `🔊 All from <a href="tg://user?id=${from.id}">${from.username}</a>:`;
                 ctx.reply(`${startText} @${from.username}`, {
                     reply_to_message_id: messageId,
                     parse_mode: 'HTML',
@@ -220,25 +224,6 @@ Bot adds /donate only for big groups - more than 10 people.
             const includePay = usernames.length >= 10;
             // 50/50 - random for adding command or button for Donation
             const includeButtonPay = includePay ? Math.random() <= 0.5 : false;
-            console.log(`[ALL] Mention with pattern in group for ${usernames.length} people, includePay=${includePay}`, chatId);
-            const str = usernames.map((username) => `@${username}`).join(', ');
-            let msg = `${startText} ${str}`;
-            if (includePay && !includeButtonPay) {
-                msg =
-                    msg +
-                        `
-        \n<strong>🫰 Support bot: /donate </strong>`;
-            }
-            const inlineKeyboard = [
-                includePay && includeButtonPay
-                    ? [
-                        {
-                            callback_data: '/donate',
-                            text: '🫰 Help us!',
-                        },
-                    ]
-                    : [],
-            ];
             this.metricsService.replyCounter.inc({
                 chatId: chatId.toString(),
                 withPayments: includePay
@@ -247,14 +232,48 @@ Bot adds /donate only for big groups - more than 10 people.
                         : 'true' // stable
                     : 'false',
             });
-            this.metricsService.replyUsersHistogram.observe(usernames.length);
-            ctx.reply(msg, {
-                reply_to_message_id: messageId,
-                parse_mode: 'HTML',
-                reply_markup: {
-                    inline_keyboard: inlineKeyboard,
-                },
-            });
+            this.metricsService.replyUsersCountHistogram.observe(usernames.length);
+            const promises = new Array();
+            const chunkSize = 5; // Telegram limitations for mentions per message
+            for (let i = 0; i < usernames.length; i += chunkSize) {
+                const chunk = usernames.slice(i, i + chunkSize);
+                const isLastMessage = i >= usernames.length - chunkSize;
+                const str = '🔊 ' + chunk.map((username) => `@${username}`).join(', ');
+                if (!isLastMessage) {
+                    const res = ctx.sendMessage(str, {
+                        parse_mode: 'HTML',
+                    });
+                    promises.push(res);
+                }
+                else {
+                    let lastStr = str;
+                    if (includePay && !includeButtonPay) {
+                        lastStr = lastStr + `\n<strong>🫰 Support bot: /donate </strong>`;
+                    }
+                    const inlineKeyboard = [
+                        includePay && includeButtonPay
+                            ? [
+                                {
+                                    callback_data: '/donate',
+                                    text: '🫰 Help us!',
+                                },
+                            ]
+                            : [],
+                    ];
+                    await Promise.all(promises);
+                    await ctx.reply(lastStr, {
+                        reply_to_message_id: messageId,
+                        parse_mode: 'HTML',
+                        reply_markup: {
+                            inline_keyboard: inlineKeyboard,
+                        },
+                    });
+                }
+            }
+            const END_TIME = Date.now();
+            const EXECUTE_TIME = END_TIME - START_TIME;
+            console.log(`[ALL] Mention with pattern in group for ${usernames.length} people, TIME=${EXECUTE_TIME}, includePay=${includePay}`, chatId);
+            this.metricsService.replyUsersTimeHistogram.observe(EXECUTE_TIME);
         });
     }
     handleDonateCommand(chatId, command = 'donate') {

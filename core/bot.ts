@@ -60,6 +60,16 @@ export class Bot {
     // Should be last for not overriding commands below
     this.registerHandleMessage()
 
+    this.bot.action('/donate', (ctx) => {
+      if (!ctx.chat?.id) return
+
+      const msg = this.handleDonateCommand(ctx.chat?.id, 'donate.btn')
+
+      ctx.reply(msg, {
+        parse_mode: 'HTML',
+      })
+    })
+
     this.bot.on(message('new_chat_members'), (ctx) => {
       const { chat, message } = ctx
       this.handleAddMembers(chat.id, message.new_chat_members)
@@ -72,10 +82,10 @@ export class Bot {
       if (!isNewGroup) return
 
       const msg = `
-Hello everyone!
-This is a bot to improve your experience, just like Slack or other instant messengers. You can mention /all chat participants with one command.
-But remember that I add each person to the mention only after his first message after I joined, so if you don’t see yourself in my mentions, at least write '+' in this chat.
-You can help to improve the Bot by sending /feedback or /donate for servers.
+👋 Hello everyone!
+🤖 This is a bot to improve your experience, just like Slack or other instant messengers. You can mention /all chat participants with one command.
+❔ But remember that I add each person to the mention only after his first message after I joined, so if you don’t see yourself in my mentions, at least write '+' in this chat. Read more with /help.
+✍️ You can help to improve the Bot by sending /feedback or /donate for servers.
 `
 
       ctx.reply(msg, {
@@ -140,15 +150,17 @@ You can help to improve the Bot by sending /feedback or /donate for servers.
       console.log('[PAYMENT] Send payments info')
 
       const message = `
-      This bot is free to use, but host and database are paid options for project.
-So, if you have opportunity to support, it will be very helpful!
-Every 1$ can help to improve features, performance and availability for the bot. 
-Support via USDT-TRC20: <code>TJyEa6p3HvAHz34gn7hZHYNwY65iHryu3w</code>
-Support via USDT-ETH: <code>0x7f49e01c13fE782aEB06Dc35a37d357b955b67B0</code>
-Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code>
-Thank you for using and help!
-Note, than you can send /feedback with features or problems.
-      `
+🙌 This bot is free to use, but hosting and database are paid options for project. So, if you have opportunity to support, it will be very helpful! 🙌
+
+1️⃣<strong>Support via USDT-TRC20: <code>TJyEa6p3HvAHz34gn7hZHYNwY65iHryu3w</code></strong>👈
+
+2️⃣<strong>Support via USDT-ETH: <code>0x7f49e01c13fE782aEB06Dc35a37d357b955b67B0</code></strong>👈
+
+3️⃣<strong>Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code></strong>👈
+
+Thank you for using and supporting us! ❤️
+✍️ Remember, than you can send /feedback with features or problems.
+`
 
       this.metricsService.commandsCounter.inc({
         chatId: ctx.chat.id.toString(),
@@ -172,7 +184,11 @@ Note, than you can send /feedback with features or problems.
       } = ctx
 
       const feedback = text.split('/feedback')[1] || undefined
-      if (!feedback) {
+      const isCommandWithBotName = feedback
+        ?.trim()
+        .endsWith(this.bot.botInfo?.username || '')
+
+      if (!feedback || isCommandWithBotName) {
         console.log(
           `[FEEDBACK] Receive empty feedback from user ${from.username} in ${chatId}: ${feedback}`
         )
@@ -182,9 +198,13 @@ Note, than you can send /feedback with features or problems.
           command: 'feedback.empty',
         })
 
-        ctx.reply(`Add something in your feedback as feature or bug report`, {
-          reply_to_message_id: messageId,
-        })
+        ctx.reply(
+          `✍️ Add something in your feedback as feature or bug report`,
+          {
+            reply_to_message_id: messageId,
+            parse_mode: 'HTML',
+          }
+        )
         return
       }
 
@@ -198,9 +218,10 @@ Note, than you can send /feedback with features or problems.
       })
 
       ctx.reply(
-        `Your review has been successfully registered, we will contact you, thank you!`,
+        `✅ Your review has been successfully registered, we will contact you, thank you!`,
         {
           reply_to_message_id: messageId,
+          parse_mode: 'HTML',
         }
       )
 
@@ -218,13 +239,13 @@ Note, than you can send /feedback with features or problems.
       console.log('[PRIVACY] Send privacy policy')
 
       const message = `
-      Are you concerned about your security and personal data? This is right!
-What do we use? Identifiers of your groups to store data about participants in them: usernames and identifiers to correctly call all users of the group.
-All data is transmitted only via encrypted channels and is not used for other purposes.
-We don't read your messages, don't log data about you in public systems and 3th party services except safe hosting and database.
-You can view the project's codebase using Github -  https://github.com/sadfsdfdsa/allbot (also can Star or Fork the Bot project).
-Be careful when using unfamiliar bots in your communication, it can be dangerous!
-      `
+🔐 Are you concerned about your security and personal data? <strong>This is right!</strong>
+✅ What do we use? Identifiers of your groups to store data about participants in them: usernames and identifiers to correctly call all users of the group.
+✅ All data is transmitted only via encrypted channels and is not used for other purposes.
+✅ We don't read your messages, don't log data about you in public systems and 3th party services except safe hosting and database.
+🧑‍💻 You can view the project's codebase using Github -  https://github.com/sadfsdfdsa/allbot (also can Star or Fork the Bot project).
+<strong>❗️ Be careful when using unfamiliar bots in your communication, it can be dangerous!</strong>
+`
 
       this.metricsService.commandsCounter.inc({
         chatId: ctx.chat.id.toString(),
@@ -240,30 +261,7 @@ Be careful when using unfamiliar bots in your communication, it can be dangerous
 
   private registerHelpCommand(): void {
     this.bot.command('help', (ctx) => {
-      console.log('[HELP] Send help info')
-
-      this.metricsService.commandsCounter.inc({
-        chatId: ctx.chat.id.toString(),
-        command: 'help',
-      })
-
-      const msg = `
-<strong>How can I mention chat participants?</strong>
-You can mention all chat participants using "/all" or by mentioning "@all" anywhere in the message.
-For example: 'Wanna play some games @all?'
-
-<strong>Why doesn't the bot mention me?</strong>
-Bot can only mention you after your first text message after the bot joins the group.
-
-<strong>Why Bot add /donate to message?</strong>
-You can use bot for Free, but servers are paid, so you can also support project.
-Bot adds /donate only for big groups - more than 10 people.
-
-Commands:
-/donate - help the project pay for the servers
-/feedback - send feature requests or report problems
-/privacy - info about personal data usage and codebase of the Bot
-`
+      const msg = this.handleDonateCommand(ctx.chat.id)
 
       ctx.reply(msg, {
         reply_to_message_id: ctx.message.message_id,
@@ -279,15 +277,22 @@ Commands:
         chat: { id: chatId },
       } = ctx
 
+      const startText = `🔊 All from <a href="tg://user?id=${from.id}">${from.username}</a>:`
+
       if (!isChatGroup(chatId)) {
         console.log(
           `[DIRECT_MSG] Direct message from ${ctx.message.text}`,
           from.username
         )
 
-        ctx.reply(`Add me to your group, here is example @all mention for you:`)
+        ctx.reply(
+          `👥 Add me to your group, here is example @all mention for you:`,
+          {
+            parse_mode: 'HTML',
+          }
+        )
 
-        ctx.reply(`All from ${from.username}: @${from.username}`, {
+        ctx.reply(`${startText} @${from.username}`, {
           reply_to_message_id: messageId,
         })
         return
@@ -306,10 +311,11 @@ Commands:
       const usernames = Object.values(chatUsernames).filter(
         (username) => username !== from.username
       )
-
       if (!usernames.length) return
 
       const includePay = usernames.length >= 10
+      // 50/50 - random for adding command or button for Donation
+      const includeButtonPay = includePay ? Math.random() <= 0.5 : false
 
       console.log(
         `[ALL] Mention with pattern in group for ${usernames.length} people, includePay=${includePay}`,
@@ -318,26 +324,71 @@ Commands:
 
       const str = usernames.map((username) => `@${username}`).join(', ')
 
-      let msg = `All from ${from.username}: ${str}`
+      let msg = `${startText} ${str}`
 
-      if (includePay) {
+      if (includePay && !includeButtonPay) {
         msg =
           msg +
           `
-        \nSupport bot: /donate`
+        \n<strong>🫰 Support bot: /donate </strong>`
       }
+
+      const inlineKeyboard = [
+        includePay && includeButtonPay
+          ? [
+              {
+                callback_data: '/donate',
+                text: '🫰 Help us!',
+              },
+            ]
+          : [],
+      ]
 
       this.metricsService.replyCounter.inc({
         chatId: chatId.toString(),
-        withPayments: String(includePay),
+        withPayments: includePay
+          ? includeButtonPay
+            ? 'true.btn' // experimental
+            : 'true' // stable
+          : 'false',
       })
 
       this.metricsService.replyUsersHistogram.observe(usernames.length)
 
       ctx.reply(msg, {
         reply_to_message_id: messageId,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: inlineKeyboard,
+        },
       })
     })
+  }
+
+  private handleDonateCommand(chatId: Chat['id'], command = 'donate'): string {
+    console.log('[PAYMENT] Send payments info')
+
+    const message = `
+🙌 This bot is free to use, but hosting and database are paid options for project. So, if you have opportunity to support, it will be very helpful! 🙌
+
+1️⃣<strong>Support via USDT-TRC20: <code>TJyEa6p3HvAHz34gn7hZHYNwY65iHryu3w</code></strong>👈
+
+2️⃣<strong>Support via USDT-ETH: <code>0x7f49e01c13fE782aEB06Dc35a37d357b955b67B0</code></strong>👈
+
+3️⃣<strong>Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code></strong>👈
+
+Thank you for using and supporting us! ❤️
+✍️ Remember, than you can send /feedback with features or problems.
+`
+
+    this.metricsService.commandsCounter.inc({
+      chatId: chatId.toString(),
+      command,
+    })
+
+    this.metricsService.updateLatestPaymentsCall(`${chatId}`)
+
+    return message
   }
 
   private handleAddMembers(chatId: Chat['id'], users: User[]): Promise<void> {

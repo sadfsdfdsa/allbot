@@ -1,4 +1,4 @@
-import { Registry, Counter, collectDefaultMetrics, Histogram } from 'prom-client';
+import { Registry, Counter, collectDefaultMetrics, Histogram, } from 'prom-client';
 const KEY_FOR_TIMESTAMP = '!TIMESTAMP';
 const KEY_FOR_COUNTER = '!COUNTER';
 const KEY_FOR_PAYMENTS = '!PAYMENTS';
@@ -26,13 +26,13 @@ export class MetricsService {
         this.replyUsersCountHistogram = new Histogram({
             name: 'allbot_replies_users_count_histogram',
             help: 'Buckets with count of users per mention',
-            buckets: [1, 5, 10, 25, 50, 100, 200]
+            buckets: [1, 5, 10, 25, 50, 100, 200],
         });
         this.registry.registerMetric(this.replyUsersCountHistogram);
         this.replyUsersTimeHistogram = new Histogram({
             name: 'allbot_replies_time_histogram',
             help: 'Time of each mention in ms',
-            buckets: [500, 1000, 5000, 10000, 20000, 50000]
+            buckets: [100, 250, 500, 1500, 5000, 10000, 20000, 50000],
         });
         this.registry.registerMetric(this.replyUsersTimeHistogram);
         this.cacheClearingCounter = new Counter({

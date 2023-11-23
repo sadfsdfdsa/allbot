@@ -103,25 +103,8 @@ export class Bot {
     }
     registerDonateCommand() {
         this.bot.command('donate', (ctx) => {
-            console.log('[PAYMENT] Send payments info');
-            const message = `
-🙌 This bot is free to use, but hosting and database are paid options for project. So, if you have opportunity to support, it will be very helpful! 🙌
-
-1️⃣<strong>Support via USDT-TRC20: <code>TJyEa6p3HvAHz34gn7hZHYNwY65iHryu3w</code></strong>👈
-
-2️⃣<strong>Support via USDT-ETH: <code>0x7f49e01c13fE782aEB06Dc35a37d357b955b67B0</code></strong>👈
-
-3️⃣<strong>Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code></strong>👈
-
-Thank you for using and supporting us! ❤️
-✍️ Remember, than you can send /feedback with features or problems.
-`;
-            this.metricsService.commandsCounter.inc({
-                chatId: ctx.chat.id.toString(),
-                command: 'donate',
-            });
-            this.metricsService.updateLatestPaymentsCall(`${ctx.chat.id}`);
-            ctx.reply(message, {
+            const msg = this.handleDonateCommand(ctx.chat.id);
+            ctx.reply(msg, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
             });
@@ -183,7 +166,28 @@ Thank you for using and supporting us! ❤️
     }
     registerHelpCommand() {
         this.bot.command('help', (ctx) => {
-            const msg = this.handleDonateCommand(ctx.chat.id);
+            console.log('[HELP] Send help info');
+            const msg = `
+❔ How can I mention chat participants?
+You can mention all chat participants using "/all" or by mentioning "@all" anywhere in the message.
+For example: <i>Wanna play some games @all?</i>
+
+❔ Why doesn't the bot mention me?
+Bot can only mention you after your first text message after the bot joins the group.
+
+❔ Why Bot add /donate to message?
+You can use bot for Free, but servers are paid, so you can also support project.
+Bot adds /donate only for big groups - more than 10 people.
+
+👀 Commands:
+/donate - help the project pay for the servers 🫰
+/feedback - send feature requests or report problems ✍️
+/privacy - info about personal data usage and codebase of the Bot 🔐
+`;
+            this.metricsService.commandsCounter.inc({
+                chatId: ctx.chat.id.toString(),
+                command: 'help',
+            });
             ctx.reply(msg, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
@@ -201,6 +205,7 @@ Thank you for using and supporting us! ❤️
                 });
                 ctx.reply(`${startText} @${from.username}`, {
                     reply_to_message_id: messageId,
+                    parse_mode: 'HTML',
                 });
                 return;
             }

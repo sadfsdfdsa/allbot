@@ -255,7 +255,7 @@ Bot adds /donate only for big groups - more than 10 people.
                             ? [
                                 {
                                     callback_data: '/donate',
-                                    text: '🫰 Help us!',
+                                    text: '🫰 Support bot!',
                                 },
                             ]
                             : [],

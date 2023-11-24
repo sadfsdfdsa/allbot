@@ -66,6 +66,7 @@ export class Bot {
 🤖 This is a bot to improve your experience, just like Slack or other instant messengers. You can mention /all chat participants with one command.
 ❔ But remember that I add each person to the mention only after his first message after I joined, so if you don’t see yourself in my mentions, at least write '+' in this chat. Read more with /help.
 ✍️ You can help to improve the Bot by sending /feedback or /donate for servers.
+⚡ Want to see updates first, send feature request to the developers? Join the chat: https://t.me/allsuperior_chat !
 `;
             ctx
                 .reply(msg, {
@@ -130,7 +131,7 @@ export class Bot {
                     command: 'feedback.empty',
                 });
                 ctx
-                    .reply(`✍️ Add something in your feedback as feature or bug report`, {
+                    .reply(`✍️ Add something in your feedback as feature or bug report (or use our chat https://t.me/allsuperior_chat)`, {
                     reply_to_message_id: messageId,
                     parse_mode: 'HTML',
                 })
@@ -201,6 +202,9 @@ Bot adds /donate only for big groups - more than 10 people.
 /donate - help the project pay for the servers 🫰
 /feedback - send feature requests or report problems ✍️
 /privacy - info about personal data usage and codebase of the Bot 🔐
+
+<strong>💬 Our chat:</strong>
+⚡ Group with updates, for sending bug reports or feature requests - https://t.me/allsuperior_chat
 `;
             this.metricsService.commandsCounter.inc({
                 chatId: ctx.chat.id.toString(),

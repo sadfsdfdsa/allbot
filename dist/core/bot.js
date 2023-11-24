@@ -284,7 +284,7 @@ Bot adds /donate only for big groups - more than 10 people.
                                             brokenUsers.push(...chunk);
                                             resolve(null);
                                         }
-                                    }, response.parameters.retry_after * 1000);
+                                    }, (response.parameters.retry_after + 0.2) * 1000);
                                 });
                             }
                             console.log(error);
@@ -337,7 +337,7 @@ Bot adds /donate only for big groups - more than 10 people.
                                 console.log('[ALL] Retry last msg', response.parameters.retry_after);
                                 setTimeout(() => {
                                     sendLastMsg();
-                                }, response.parameters.retry_after * 1000);
+                                }, (response.parameters.retry_after + 0.2) * 1000);
                             }
                         });
                     };

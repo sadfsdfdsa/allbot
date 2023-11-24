@@ -397,7 +397,7 @@ Bot adds /donate only for big groups - more than 10 people.
 
                       resolve(null)
                     }
-                  }, response.parameters.retry_after * 1000)
+                  }, (response.parameters.retry_after + 0.2) * 1000)
                 })
               }
 
@@ -469,7 +469,7 @@ Bot adds /donate only for big groups - more than 10 people.
 
                 setTimeout(() => {
                   sendLastMsg()
-                }, response.parameters.retry_after * 1000)
+                }, (response.parameters.retry_after + 0.2) * 1000)
               }
             })
           }

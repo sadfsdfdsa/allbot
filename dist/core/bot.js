@@ -49,9 +49,11 @@ export class Bot {
             if (!ctx.chat?.id)
                 return;
             const msg = this.handleDonateCommand(ctx.chat?.id, 'donate.btn');
-            ctx.reply(msg, {
+            ctx
+                .reply(msg, {
                 parse_mode: 'HTML',
-            });
+            })
+                .catch(this.handleSendMessageError);
         });
         this.bot.on(message('new_chat_members'), (ctx) => {
             const { chat, message } = ctx;
@@ -65,9 +67,11 @@ export class Bot {
 ❔ But remember that I add each person to the mention only after his first message after I joined, so if you don’t see yourself in my mentions, at least write '+' in this chat. Read more with /help.
 ✍️ You can help to improve the Bot by sending /feedback or /donate for servers.
 `;
-            ctx.reply(msg, {
+            ctx
+                .reply(msg, {
                 parse_mode: 'HTML',
-            });
+            })
+                .catch(this.handleSendMessageError);
         });
         this.bot.on(message('left_chat_member'), ({ chat, message }) => {
             this.handleDelete(chat.id, message.left_chat_member);
@@ -104,10 +108,12 @@ export class Bot {
     registerDonateCommand() {
         this.bot.command('donate', (ctx) => {
             const msg = this.handleDonateCommand(ctx.chat.id);
-            ctx.reply(msg, {
+            ctx
+                .reply(msg, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
-            });
+            })
+                .catch(this.handleSendMessageError);
         });
     }
     registerFeedbackCommand() {
@@ -123,10 +129,12 @@ export class Bot {
                     chatId: chatId.toString(),
                     command: 'feedback.empty',
                 });
-                ctx.reply(`✍️ Add something in your feedback as feature or bug report`, {
+                ctx
+                    .reply(`✍️ Add something in your feedback as feature or bug report`, {
                     reply_to_message_id: messageId,
                     parse_mode: 'HTML',
-                });
+                })
+                    .catch(this.handleSendMessageError);
                 return;
             }
             console.log(`[FEEDBACK] Receive feedback from user ${from.username} in ${chatId}: ${feedback}`);
@@ -134,10 +142,12 @@ export class Bot {
                 chatId: chatId.toString(),
                 command: 'feedback',
             });
-            ctx.reply(`✅ Your review has been successfully registered, we will contact you, thank you!`, {
+            ctx
+                .reply(`✅ Your review has been successfully registered, we will contact you, thank you!`, {
                 reply_to_message_id: messageId,
                 parse_mode: 'HTML',
-            });
+            })
+                .catch(this.handleSendMessageError);
             if (!this.ADMIN_ID)
                 return;
             this.bot.telegram.sendMessage(this.ADMIN_ID, `There is a new feedback from @${from.username} in chat group ${chatId}:\n${feedback}`);
@@ -158,10 +168,12 @@ export class Bot {
                 chatId: ctx.chat.id.toString(),
                 command: 'privacy',
             });
-            ctx.reply(message, {
+            ctx
+                .reply(message, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
-            });
+            })
+                .catch(this.handleSendMessageError);
         });
     }
     registerHelpCommand() {
@@ -174,6 +186,9 @@ For example: <i>Wanna play some games @all?</i>
 
 <b>❔ Why does the bot give out so many messages?</b>
 Telegram has a limit on mentions - only 5 users receive notifications per message.
+
+<b>❔ Why last message from mentions is not for 5 members?</b>
+Because of performance reasons Bot split all your group for 20 chunks (more - Telegram give a timeout and we can not send anything to you), so notifications receive only 5 users of each message
 
 <b>❔ Why doesn't the bot mention me?</b>
 Bot can only mention you after your first text message after the bot joins the group.
@@ -191,10 +206,12 @@ Bot adds /donate only for big groups - more than 10 people.
                 chatId: ctx.chat.id.toString(),
                 command: 'help',
             });
-            ctx.reply(msg, {
+            ctx
+                .reply(msg, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
-            });
+            })
+                .catch(this.handleSendMessageError);
         });
     }
     registerHandleMessage() {
@@ -203,14 +220,18 @@ Bot adds /donate only for big groups - more than 10 people.
             const START_TIME = Date.now();
             if (!isChatGroup(chatId)) {
                 console.log(`[DIRECT_MSG] Direct message from ${ctx.message.text}`, from.username);
-                ctx.reply(`👥 Add me to your group, here is example @all mention for you:`, {
+                ctx
+                    .reply(`👥 Add me to your group, here is example @all mention for you:`, {
                     parse_mode: 'HTML',
-                });
+                })
+                    .catch(this.handleSendMessageError);
                 const startText = `🔊 All from <a href="tg://user?id=${from.id}">${from.username}</a>:`;
-                ctx.reply(`${startText} @${from.username}`, {
+                ctx
+                    .reply(`${startText} @${from.username}`, {
                     reply_to_message_id: messageId,
                     parse_mode: 'HTML',
-                });
+                })
+                    .catch(this.handleSendMessageError);
                 return;
             }
             await this.userRepository.addUsers(chatId, [from]);
@@ -219,60 +240,118 @@ Bot adds /donate only for big groups - more than 10 people.
                 return;
             const chatUsernames = await this.userRepository.getUsernamesByChatId(chatId);
             const usernames = Object.values(chatUsernames).filter((username) => username !== from.username);
+            // const usernames = new Array<string>(255)
+            //   .fill('item')
+            //   .map((_, index) => `test${index}`)
             if (!usernames.length)
                 return;
-            const includePay = usernames.length >= 10;
-            // 50/50 - random for adding command or button for Donation
-            const includeButtonPay = includePay ? Math.random() <= 0.5 : false;
-            this.metricsService.replyCounter.inc({
-                chatId: chatId.toString(),
-                withPayments: includePay
-                    ? includeButtonPay
-                        ? 'true.btn' // experimental
-                        : 'true' // stable
-                    : 'false',
-            });
-            this.metricsService.replyUsersCountHistogram.observe(usernames.length);
+            console.log(`[ALL] Start mention`, usernames.length, chatId);
+            const includePay = usernames.length >= 10; // Large group members count
             const promises = new Array();
             const chunkSize = 5; // Telegram limitations for mentions per message
+            const chunksCount = 19; // Telegram limitations for messages
+            const brokenUsers = new Array();
             for (let i = 0; i < usernames.length; i += chunkSize) {
                 const chunk = usernames.slice(i, i + chunkSize);
                 const isLastMessage = i >= usernames.length - chunkSize;
                 const str = '🔊 ' + chunk.map((username) => `@${username}`).join(', ');
                 if (!isLastMessage) {
-                    const res = ctx.sendMessage(str, {
-                        parse_mode: 'HTML',
-                    });
-                    promises.push(res);
+                    if (promises.length >= chunksCount) {
+                        brokenUsers.push(...chunk);
+                        continue;
+                    }
+                    const execute = async () => {
+                        try {
+                            const sendingResult = await ctx.sendMessage(str, {
+                                parse_mode: 'HTML',
+                            });
+                            return sendingResult;
+                        }
+                        catch (error) {
+                            const response = error.response;
+                            if (response?.error_code === 429) {
+                                console.log('[ALL] Error with timeout=', response.parameters.retry_after);
+                                return new Promise((resolve) => {
+                                    setTimeout(async () => {
+                                        try {
+                                            await ctx.sendMessage(str, {
+                                                parse_mode: 'HTML',
+                                            });
+                                            resolve(null);
+                                        }
+                                        catch (error) {
+                                            console.log('[ALL] Add users to broken');
+                                            brokenUsers.push(...chunk);
+                                            resolve(null);
+                                        }
+                                    }, response.parameters.retry_after * 1000);
+                                });
+                            }
+                            console.log(error);
+                            return Promise.resolve();
+                        }
+                    };
+                    promises.push(execute());
                 }
                 else {
-                    let lastStr = str;
-                    if (includePay && !includeButtonPay) {
-                        lastStr = lastStr + `\n<strong>🫰 Support bot: /donate </strong>`;
-                    }
-                    const inlineKeyboard = [
-                        includePay && includeButtonPay
-                            ? [
-                                {
-                                    callback_data: '/donate',
-                                    text: '🫰 Support bot!',
-                                },
-                            ]
-                            : [],
-                    ];
-                    await Promise.all(promises);
-                    await ctx.reply(lastStr, {
-                        reply_to_message_id: messageId,
-                        parse_mode: 'HTML',
-                        reply_markup: {
-                            inline_keyboard: inlineKeyboard,
-                        },
-                    });
+                    await Promise.all(promises.map((promise) => promise.catch(this.handleSendMessageError))).catch(this.handleSendMessageError);
+                    const sendLastMsg = async () => {
+                        return new Promise(async (resolve) => {
+                            console.log('[ALL] Broken users:', brokenUsers.length);
+                            let lastStr = str;
+                            if (brokenUsers.length) {
+                                lastStr =
+                                    lastStr +
+                                        ', ' +
+                                        brokenUsers.map((username) => `@${username}`).join(', ');
+                                lastStr =
+                                    lastStr +
+                                        `\nPlease read /help for your group with size more than 250`;
+                            }
+                            const inlineKeyboard = [
+                                includePay
+                                    ? [
+                                        {
+                                            callback_data: '/donate',
+                                            text: '🫰 Support bot!',
+                                        },
+                                    ]
+                                    : [],
+                            ];
+                            try {
+                                await ctx.reply(lastStr, {
+                                    reply_to_message_id: messageId,
+                                    parse_mode: 'HTML',
+                                    reply_markup: {
+                                        inline_keyboard: inlineKeyboard,
+                                    },
+                                });
+                                resolve(null);
+                            }
+                            catch (error) {
+                                const response = error.response;
+                                if (response?.error_code !== 429) {
+                                    console.error(error);
+                                    return resolve(null);
+                                }
+                                console.log('[ALL] Retry last msg', response.parameters.retry_after);
+                                setTimeout(() => {
+                                    sendLastMsg();
+                                }, response.parameters.retry_after * 1000);
+                            }
+                        });
+                    };
+                    await sendLastMsg();
                 }
             }
             const END_TIME = Date.now();
             const EXECUTE_TIME = END_TIME - START_TIME;
             console.log(`[ALL] Mention with pattern in group for ${usernames.length} people, TIME=${EXECUTE_TIME}, includePay=${includePay}`, chatId);
+            this.metricsService.replyCounter.inc({
+                chatId: chatId.toString(),
+                withPayments: includePay ? 'true' : 'false',
+            });
+            this.metricsService.replyUsersCountHistogram.observe(usernames.length);
             this.metricsService.replyUsersTimeHistogram.observe(EXECUTE_TIME);
         });
     }
@@ -302,5 +381,8 @@ Thank you for using and supporting us! ❤️
     }
     handleDelete(chatId, user) {
         return this.userRepository.deleteUser(chatId, user.id);
+    }
+    handleSendMessageError(error) {
+        console.error(error);
     }
 }

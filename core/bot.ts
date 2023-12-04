@@ -23,6 +23,8 @@ export class Bot {
 
   private isListening = false
 
+  private readonly activeQuery = new Set<Chat['id']>()
+
   constructor(
     private readonly userRepository: UserRepository,
     private readonly metricsService: MetricsService,
@@ -36,7 +38,9 @@ export class Bot {
 
     this.ADMIN_ID = adminId
 
-    this.bot = new Telegraf(token)
+    this.bot = new Telegraf(token, {
+      handlerTimeout: Number.POSITIVE_INFINITY,
+    })
 
     this.bot.telegram.setMyCommands([
       {
@@ -170,8 +174,8 @@ export class Bot {
           reply_to_message_id: ctx.message.message_id,
           parse_mode: 'HTML',
           reply_markup: {
-            inline_keyboard: inlineKeyboard
-          }
+            inline_keyboard: inlineKeyboard,
+          },
         })
         .catch(this.handleSendMessageError)
     })
@@ -365,7 +369,14 @@ Bot adds /donate only for big groups - more than 10 people.
 
       if (!usernames.length) return
 
+      if (this.activeQuery.has(chatId)) {
+        console.log('[ALL] Block spam', chatId)
+        return
+      }
+
       console.log(`[ALL] Start mention`, usernames.length, chatId)
+
+      this.activeQuery.add(chatId)
 
       const includePay = usernames.length >= 10 // Large group members count
 
@@ -489,6 +500,8 @@ Bot adds /donate only for big groups - more than 10 people.
                 setTimeout(() => {
                   sendLastMsg()
                 }, (response.parameters.retry_after + 0.2) * 1000)
+              } finally {
+                this.activeQuery.delete(chatId)
               }
             })
           }

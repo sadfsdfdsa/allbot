@@ -26,6 +26,7 @@ export class CacheService {
   }
 
   public removeFromCache(chatId: Chat['id']): boolean {
+    // TODO remove metrics also
     return this.cachedChats.delete(chatId)
   }
 

@@ -6,6 +6,12 @@ export class Bot {
     metricsService;
     bot;
     MENTION_COMMANDS = ['@all', '/all'];
+    CHRISTMAS_EMOJI = ['🎄', '❄️', '🎅', '🎁', '☃️', '🦌'];
+    DONATE_LINK = 'https://www.buymeacoffee.com/karanarqq';
+    DONATE_URL_BUTTON = {
+        url: this.DONATE_LINK,
+        text: '☕️ Buy me a coffee',
+    };
     ADMIN_ID;
     isListening = false;
     constructor(userRepository, metricsService, botName, adminId, token) {
@@ -24,7 +30,7 @@ export class Bot {
             },
             {
                 command: 'donate',
-                description: 'Get crypto payments accounts for supporting the project',
+                description: 'Support the project to pay for servers and new features',
             },
             {
                 command: 'help',
@@ -109,10 +115,14 @@ export class Bot {
     registerDonateCommand() {
         this.bot.command('donate', (ctx) => {
             const msg = this.handleDonateCommand(ctx.chat.id);
+            const inlineKeyboard = [[this.DONATE_URL_BUTTON]];
             ctx
                 .reply(msg, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: inlineKeyboard
+                }
             })
                 .catch(this.handleSendMessageError);
         });
@@ -258,7 +268,8 @@ Bot adds /donate only for big groups - more than 10 people.
             for (let i = 0; i < usernames.length; i += chunkSize) {
                 const chunk = usernames.slice(i, i + chunkSize);
                 const isLastMessage = i >= usernames.length - chunkSize;
-                const str = '🔊 ' + chunk.map((username) => `@${username}`).join(', ');
+                const emoji = this.CHRISTMAS_EMOJI[Math.floor(Math.random() * this.CHRISTMAS_EMOJI.length)] ?? '🔊';
+                const str = `${emoji} ` + chunk.map((username) => `@${username}`).join(', ');
                 if (!isLastMessage) {
                     if (promises.length >= chunksCount) {
                         brokenUsers.push(...chunk);
@@ -313,14 +324,7 @@ Bot adds /donate only for big groups - more than 10 people.
                                         `\nPlease read /help for your group with size more than 250`;
                             }
                             const inlineKeyboard = [
-                                includePay
-                                    ? [
-                                        {
-                                            callback_data: '/donate',
-                                            text: '🫰 Support bot!',
-                                        },
-                                    ]
-                                    : [],
+                                includePay ? [this.DONATE_URL_BUTTON] : [],
                             ];
                             try {
                                 await ctx.reply(lastStr, {

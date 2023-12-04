@@ -18,6 +18,7 @@ export class CacheService {
         return Boolean(this.cachedChats.get(chatId)?.has(username));
     }
     removeFromCache(chatId) {
+        // TODO remove metrics also
         return this.cachedChats.delete(chatId);
     }
     /**

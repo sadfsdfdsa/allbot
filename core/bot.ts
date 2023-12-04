@@ -10,6 +10,15 @@ export class Bot {
 
   private readonly MENTION_COMMANDS = ['@all', '/all']
 
+  private readonly CHRISTMAS_EMOJI = ['🎄', '❄️', '🎅', '🎁', '☃️', '🦌']
+
+  private readonly DONATE_LINK = 'https://www.buymeacoffee.com/karanarqq'
+
+  private readonly DONATE_URL_BUTTON = {
+    url: this.DONATE_LINK,
+    text: '☕️ Buy me a coffee',
+  }
+
   private readonly ADMIN_ID: number | undefined
 
   private isListening = false
@@ -36,7 +45,7 @@ export class Bot {
       },
       {
         command: 'donate',
-        description: 'Get crypto payments accounts for supporting the project',
+        description: 'Support the project to pay for servers and new features',
       },
       {
         command: 'help',
@@ -154,10 +163,15 @@ export class Bot {
     this.bot.command('donate', (ctx) => {
       const msg = this.handleDonateCommand(ctx.chat.id)
 
+      const inlineKeyboard = [[this.DONATE_URL_BUTTON]]
+
       ctx
         .reply(msg, {
           reply_to_message_id: ctx.message.message_id,
           parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: inlineKeyboard
+          }
         })
         .catch(this.handleSendMessageError)
     })
@@ -365,7 +379,12 @@ Bot adds /donate only for big groups - more than 10 people.
 
         const isLastMessage = i >= usernames.length - chunkSize
 
-        const str = '🔊 ' + chunk.map((username) => `@${username}`).join(', ')
+        const emoji =
+          this.CHRISTMAS_EMOJI[
+            Math.floor(Math.random() * this.CHRISTMAS_EMOJI.length)
+          ] ?? '🔊'
+        const str =
+          `${emoji} ` + chunk.map((username) => `@${username}`).join(', ')
 
         if (!isLastMessage) {
           if (promises.length >= chunksCount) {
@@ -437,14 +456,7 @@ Bot adds /donate only for big groups - more than 10 people.
               }
 
               const inlineKeyboard = [
-                includePay
-                  ? [
-                      {
-                        callback_data: '/donate',
-                        text: '🫰 Support bot!',
-                      },
-                    ]
-                  : [],
+                includePay ? [this.DONATE_URL_BUTTON] : [],
               ]
 
               try {

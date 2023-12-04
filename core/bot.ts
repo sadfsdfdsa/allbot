@@ -330,7 +330,7 @@ Bot adds /donate only for big groups - more than 10 people.
           from.username
         )
 
-        ctx
+        await ctx
           .reply(
             `👥 Add me to your group, here is example @all mention for you:`,
             {

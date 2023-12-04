@@ -237,7 +237,7 @@ Bot adds /donate only for big groups - more than 10 people.
             const START_TIME = Date.now();
             if (!isChatGroup(chatId)) {
                 console.log(`[DIRECT_MSG] Direct message from ${ctx.message.text}`, from.username);
-                ctx
+                await ctx
                     .reply(`👥 Add me to your group, here is example @all mention for you:`, {
                     parse_mode: 'HTML',
                 })

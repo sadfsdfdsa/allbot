@@ -12,17 +12,15 @@ export class Bot {
         url: this.DONATE_LINK,
         text: '☕️ Buy me a coffee',
     };
-    ADMIN_ID;
     isListening = false;
     activeQuery = new Set();
-    constructor(userRepository, metricsService, botName, adminId, token) {
+    constructor(userRepository, metricsService, botName, token) {
         this.userRepository = userRepository;
         this.metricsService = metricsService;
         if (!token)
             throw new Error('No tg token set');
         if (botName)
             this.MENTION_COMMANDS.push(botName);
-        this.ADMIN_ID = adminId;
         this.bot = new Telegraf(token, {
             handlerTimeout: Number.POSITIVE_INFINITY,
         });
@@ -40,16 +38,11 @@ export class Bot {
                 description: 'Help information',
             },
             {
-                command: 'feedback',
-                description: 'Send feedback or bug reports (English please)',
-            },
-            {
                 command: 'privacy',
                 description: 'How the Bot takes care of your personal data',
             },
         ]);
         this.registerDonateCommand();
-        this.registerFeedbackCommand();
         this.registerPrivacyCommand();
         this.registerHelpCommand();
         // Should be last for not overriding commands below
@@ -74,7 +67,7 @@ export class Bot {
 👋 Hello everyone!
 🤖 This is a bot to improve your experience, just like Slack or other instant messengers. You can mention /all chat participants with one command.
 ❔ But remember that I add each person to the mention only after his first message after I joined, so if you don’t see yourself in my mentions, at least write '+' in this chat. Read more with /help.
-✍️ You can help to improve the Bot by sending /feedback or /donate for servers.
+✍️ You can help to improve the Bot by /donate for servers.
 ⚡ Want to see updates first, send feature request to the developers? Join the chat: https://t.me/allsuperior_chat !
 `;
             ctx
@@ -130,43 +123,6 @@ export class Bot {
                 .catch(this.handleSendMessageError);
         });
     }
-    registerFeedbackCommand() {
-        this.bot.command('feedback', (ctx) => {
-            const { message: { from, text, message_id: messageId }, chat: { id: chatId }, } = ctx;
-            const feedback = text.split('/feedback')[1] || undefined;
-            const isCommandWithBotName = feedback
-                ?.trim()
-                .endsWith(this.bot.botInfo?.username || '');
-            if (!feedback || isCommandWithBotName) {
-                console.log(`[FEEDBACK] Receive empty feedback from user ${from.username} in ${chatId}: ${feedback}`);
-                this.metricsService.commandsCounter.inc({
-                    chatId: chatId.toString(),
-                    command: 'feedback.empty',
-                });
-                ctx
-                    .reply(`✍️ Add something in your feedback as feature or bug report (or use our chat https://t.me/allsuperior_chat)`, {
-                    reply_to_message_id: messageId,
-                    parse_mode: 'HTML',
-                })
-                    .catch(this.handleSendMessageError);
-                return;
-            }
-            console.log(`[FEEDBACK] Receive feedback from user ${from.username} in ${chatId}: ${feedback}`);
-            this.metricsService.commandsCounter.inc({
-                chatId: chatId.toString(),
-                command: 'feedback',
-            });
-            ctx
-                .reply(`✅ Your review has been successfully registered, we will contact you, thank you!`, {
-                reply_to_message_id: messageId,
-                parse_mode: 'HTML',
-            })
-                .catch(this.handleSendMessageError);
-            if (!this.ADMIN_ID)
-                return;
-            this.bot.telegram.sendMessage(this.ADMIN_ID, `There is a new feedback from @${from.username} in chat group ${chatId}:\n${feedback}`);
-        });
-    }
     registerPrivacyCommand() {
         this.bot.command('privacy', (ctx) => {
             console.log('[PRIVACY] Send privacy policy');
@@ -201,9 +157,6 @@ For example: <i>Wanna play some games @all?</i>
 <b>❔ Why does the bot give out so many messages?</b>
 Telegram has a limit on mentions - only 5 users receive notifications per message.
 
-<b>❔ Why last message from mentions is not for 5 members?</b>
-Because of performance reasons Bot split all your group for 20 chunks (more - Telegram give a timeout and we can not send anything to you), so notifications receive only 5 users of each message
-
 <b>❔ Why doesn't the bot mention me?</b>
 Bot can only mention you after your first text message after the bot joins the group.
 
@@ -211,9 +164,14 @@ Bot can only mention you after your first text message after the bot joins the g
 You can use bot for Free, but servers are paid, so you can also support project.
 Bot adds /donate only for big groups - more than 10 people.
 
+<b>❔ How mentions work for members in large (100+) groups?</b>
+Telegram restrict messaging for Bots. So we can send only 20 messages at one time per group.
+Also Telegram send Push only first 5 mentions in a message. So we must split all your group members by 5 and can send only 20 messages.
+There is why we sending 19 messages with 5 mentions and one last big message with all other users. Last message users do not receive Pushes.
+Please contact us in chat if you need that functionality.
+
 <strong>👀 Commands:</strong>
 /donate - help the project pay for the servers 🫰
-/feedback - send feature requests or report problems ✍️
 /privacy - info about personal data usage and codebase of the Bot 🔐
 
 <strong>💬 Our chat:</strong>
@@ -327,9 +285,11 @@ Bot adds /donate only for big groups - more than 10 people.
                                     lastStr +
                                         ', ' +
                                         brokenUsers.map((username) => `@${username}`).join(', ');
-                                lastStr =
-                                    lastStr +
-                                        `\nPlease read /help for your group with size more than 250`;
+                                if (usernames.length > 100) {
+                                    lastStr =
+                                        lastStr +
+                                            `\nPlease read /help for your group with size more than 100`;
+                                }
                             }
                             const inlineKeyboard = [
                                 includePay ? [this.DONATE_URL_BUTTON] : [],
@@ -386,7 +346,6 @@ Bot adds /donate only for big groups - more than 10 people.
 3️⃣<strong>Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code></strong>👈
 
 Thank you for using and supporting us! ❤️
-✍️ Remember, than you can send /feedback with features or problems.
 `;
         this.metricsService.commandsCounter.inc({
             chatId: chatId.toString(),

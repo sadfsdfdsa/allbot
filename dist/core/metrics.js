@@ -13,6 +13,8 @@ export class MetricsService {
     dbOpsCounter;
     replyUsersCountHistogram;
     replyUsersTimeHistogram;
+    customMentionsCounter;
+    customMentionsActionCounter;
     constructor(db, measureDefaultMetrics = false) {
         this.db = db;
         console.log('[LAUNCH] Metrics service started');
@@ -65,6 +67,18 @@ export class MetricsService {
             labelNames: ['action'],
         });
         this.registry.registerMetric(this.dbOpsCounter);
+        this.customMentionsCounter = new Counter({
+            name: 'allbot_custom_mentions',
+            help: 'The number of calls of custom mention',
+            labelNames: ['chatId'],
+        });
+        this.registry.registerMetric(this.customMentionsCounter);
+        this.customMentionsActionCounter = new Counter({
+            name: 'allbot_custom_mentions_action',
+            help: 'The number of calls of database calls',
+            labelNames: ['action', 'chatId'],
+        });
+        this.registry.registerMetric(this.customMentionsActionCounter);
         if (!measureDefaultMetrics)
             return;
         collectDefaultMetrics({

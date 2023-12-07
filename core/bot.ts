@@ -1,14 +1,32 @@
-import { Telegraf } from 'telegraf'
+import { Context, NarrowedContext, Telegraf } from 'telegraf'
 import { UserRepository } from './repository.js'
 import { MetricsService } from './metrics.js'
 import { message } from 'telegraf/filters'
-import { Chat, User } from 'telegraf/types'
-import { isChatGroup } from './utils/utils.js'
+import { Chat, Update, User } from 'telegraf/types'
+import {
+  matchMentionsToUsers,
+  getMentionsFromEntities,
+  isChatGroup,
+} from './utils/utils.js'
+import { MentionRepository } from './mentionRepository.js'
+import {
+  ADDED_TO_CHAT_WELCOME_TEXT,
+  CLEAN_UP_EMPTY_MENTION_TEXT,
+  DONATE_COMMAND_TEXT,
+  EMPTY_MENTION_TEXT,
+  HELP_COMMAND_TEXT,
+  NEW_MENTION_EXAMPLE,
+  NOT_EXISTED_MENTION_TEXT,
+  PRIVACY_COMMAND_TEXT,
+} from './constants/texts.js'
+import { LIMITS_MENTION_FOR_ADDING_PAY } from './constants/limits.js'
 
 export class Bot {
   private bot: Telegraf
 
   private readonly MENTION_COMMANDS = ['@all', '/all']
+
+  private readonly INCLUDE_PAY_LIMIT = LIMITS_MENTION_FOR_ADDING_PAY
 
   private readonly CHRISTMAS_EMOJI = ['🎄', '❄️', '🎅', '🎁', '☃️', '🦌']
 
@@ -19,6 +37,11 @@ export class Bot {
     text: '☕️ Buy me a coffee',
   }
 
+  private readonly BUY_MENTIONS_BUTTON = {
+    url: this.DONATE_LINK,
+    text: '♾ Buy Unlimited mentions',
+  }
+
   private isListening = false
 
   private readonly activeQuery = new Set<Chat['id']>()
@@ -26,6 +49,7 @@ export class Bot {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly metricsService: MetricsService,
+    private readonly mentionRepository: MentionRepository,
     botName: string | undefined,
     token: string | undefined
   ) {
@@ -54,11 +78,37 @@ export class Bot {
         command: 'privacy',
         description: 'How the Bot takes care of your personal data',
       },
+      // {
+      //   command: 'mention',
+      //   description: '/mention some_group with additional text',
+      // },
+      // {
+      //   command: 'add_to',
+      //   description: '/add_to some_group @user1 @user2',
+      // },
+      // {
+      //   command: 'delete_from',
+      //   description: '/delete_from some_group @user1 @user2',
+      // },
+      // {
+      //   command: 'delete_mention',
+      //   description: '/delete_mention some_group',
+      // },
+      // {
+      //   command: 'mentions_all',
+      //   description: 'See info about all your custom mentions',
+      // },
     ])
 
     this.registerDonateCommand()
     this.registerPrivacyCommand()
     this.registerHelpCommand()
+
+    this.registerMentionCommand()
+    this.registerGetAllMentionCommand()
+    this.registerAddToMentionCommand()
+    this.registerDeleteFromMentionCommand()
+    this.registerDeleteMentionCommand()
 
     // Should be last for not overriding commands below
     this.registerHandleMessage()
@@ -86,16 +136,8 @@ export class Bot {
       )
       if (!isNewGroup) return
 
-      const msg = `
-👋 Hello everyone!
-🤖 This is a bot to improve your experience, just like Slack or other instant messengers. You can mention /all chat participants with one command.
-❔ But remember that I add each person to the mention only after his first message after I joined, so if you don’t see yourself in my mentions, at least write '+' in this chat. Read more with /help.
-✍️ You can help to improve the Bot by /donate for servers.
-⚡ Want to see updates first, send feature request to the developers? Join the chat: https://t.me/allsuperior_chat !
-`
-
       ctx
-        .reply(msg, {
+        .reply(ADDED_TO_CHAT_WELCOME_TEXT, {
           parse_mode: 'HTML',
         })
         .catch(this.handleSendMessageError)
@@ -153,6 +195,418 @@ export class Bot {
     return true
   }
 
+  private handleDonateCommand(chatId: Chat['id'], command = 'donate'): string {
+    console.log('[PAYMENT] Send payments info')
+    this.metricsService.commandsCounter.inc({
+      chatId: chatId.toString(),
+      command,
+    })
+    this.metricsService.updateLatestPaymentsCall(`${chatId}`)
+    return DONATE_COMMAND_TEXT
+  }
+
+  private registerMentionCommand(): void {
+    this.bot.command('mention', async (ctx) => {
+      const field = ctx.message.text.split(' ')[1]
+      if (!field) {
+        console.log('[mention] Empty mention', ctx.message.text)
+
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mention.emptyMention',
+        })
+
+        ctx.reply(EMPTY_MENTION_TEXT, { parse_mode: 'HTML' })
+        return
+      }
+
+      const isExists = await this.mentionRepository.checkIfMentionExists(
+        ctx.message.chat.id,
+        field
+      )
+      if (!isExists) {
+        console.log('[mention] Not exists', ctx.message.chat.id, field)
+
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mention.notExisted',
+        })
+
+        ctx.reply(NOT_EXISTED_MENTION_TEXT, {
+          parse_mode: 'HTML',
+        })
+        return
+      }
+
+      const ids = await this.mentionRepository.getUsersIdsByMention(
+        ctx.message.chat.id,
+        field
+      )
+      const users = await this.userRepository.getUsersUsernamesByIdInChat(
+        ctx.message.chat.id
+      )
+
+      const idsToDelete: string[] = []
+
+      const usernamesToMention = ids.reduce<string[]>((acc, id) => {
+        const username = users[id]
+        if (!username) {
+          idsToDelete.push(id)
+          return acc
+        }
+
+        acc.push(username)
+
+        return acc
+      }, [])
+
+      if (idsToDelete.length) {
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mention.deleteBrokeUsers',
+        })
+
+        this.mentionRepository.deleteUsersFromMention(
+          ctx.message.chat.id,
+          field,
+          idsToDelete
+        )
+
+        console.log(
+          '[mention] Clean up',
+          ctx.message.chat.id,
+          field,
+          idsToDelete.length
+        )
+      }
+
+      if (!usernamesToMention.length) {
+        console.log(
+          '[mention] Empty usernames to mention',
+          ctx.message.chat.id,
+          field,
+          usernamesToMention.length
+        )
+
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mention.deleteMention',
+        })
+
+        await this.mentionRepository.deleteMention(ctx.message.chat.id, field)
+        ctx.reply(CLEAN_UP_EMPTY_MENTION_TEXT, {
+          parse_mode: 'HTML',
+        })
+        return
+      }
+
+      this.metricsService.customMentionsCounter.inc({
+        chatId: ctx.message.chat.id.toString(),
+      })
+
+      console.log(
+        '[mention] Mention',
+        ctx.message.chat.id,
+        field,
+        usernamesToMention.length
+      )
+
+      this.mentionPeople(
+        ctx,
+        usernamesToMention,
+        usernamesToMention.length >= this.INCLUDE_PAY_LIMIT
+      )
+    })
+  }
+
+  private registerGetAllMentionCommand(): void {
+    this.bot.command('mentions_all', async (ctx) => {
+      const data = await this.mentionRepository.getGroupMentions(
+        ctx.message.chat.id
+      )
+      const entries = Object.entries(data)
+      if (!entries.length) {
+        console.log('[mentions_all] No mentions', ctx.message.chat.id)
+
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mentions_all.emptyMentions',
+        })
+
+        ctx.reply(
+          `0️⃣ There is no custom mentions. Try it out:\n${NEW_MENTION_EXAMPLE}`,
+          {
+            parse_mode: 'HTML',
+          }
+        )
+        return
+      }
+
+      const str = entries.reduce<string>((acc, [key, value], index) => {
+        return (
+          acc +
+          `\n${index + 1}. <strong>${key}</strong>: ${value} <i>member(s)</i>`
+        )
+      }, '')
+
+      console.log('[mentions_all] Print mentions', ctx.message.chat.id)
+
+      this.metricsService.customMentionsActionCounter.inc({
+        chatId: ctx.message.chat.id.toString(),
+        action: 'mentions_all.getAll',
+      })
+
+      ctx.reply(`Custom mentions in the group: \n${str}`, {
+        parse_mode: 'HTML',
+      })
+    })
+  }
+
+  private registerAddToMentionCommand(): void {
+    this.bot.command('add_to', async (ctx) => {
+      const field = ctx.message.text.split(' ')[1]
+      if (!field) {
+        console.log('[add_to] Empty mention', ctx.message.text)
+
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mentionAddTo.emptyMention',
+        })
+
+        ctx.reply(EMPTY_MENTION_TEXT, { parse_mode: 'HTML' })
+        return
+      }
+
+      const mentions = getMentionsFromEntities(
+        ctx.message.text,
+        ctx.message.entities
+      )
+
+      const reversedUsers =
+        await this.userRepository.getUsersIdsByUsernamesInChat(
+          ctx.message.chat.id
+        )
+
+      const { successIds, successMentions, missedMentions } =
+        matchMentionsToUsers(mentions, reversedUsers)
+
+      const unsuccessStr = missedMentions.length
+        ? `⚠️ Some users cannot be added: ${missedMentions.join(
+            ', '
+          )}.\nProbably they are not in the group or did not write anything (see /help for more info or contact us)`
+        : ''
+
+      if (!successIds.length) {
+        console.log(
+          '[add_to] No success',
+          ctx.message.chat.id,
+          field,
+          successIds,
+          successMentions,
+          missedMentions
+        )
+
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mentionAddTo.emptyCreating',
+        })
+
+        const notCreated = `🚫 <strong>Mention did not created</strong>. Add someone from the group as initial members.`
+        ctx.reply(`${notCreated}\n${unsuccessStr}`, {
+          parse_mode: 'HTML',
+        })
+        return
+      }
+
+      const isSuccess = await this.mentionRepository.addUsersToMention(
+        ctx.message.chat.id,
+        field,
+        successIds
+      )
+
+      if (!isSuccess) {
+        console.log('[add_to] Paid limit', ctx.message.chat.id, field)
+
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mentionAddTo.limitsReached',
+        })
+
+        const inlineKeyboard = [[this.BUY_MENTIONS_BUTTON]]
+        ctx.reply(
+          `🚫 You have been reached a Free limit.
+Need more? Try removing useless mentions using the /mentions_all and /delete_mention commands.
+<strong>Or you can buy in our store, this is an unlimited quantity, no subscriptions.</strong>
+`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: inlineKeyboard,
+            },
+          }
+        )
+        return
+      }
+
+      const successStr = `➕ In mention <strong>${field}</strong> added: ${successMentions.join(
+        ', '
+      )}`
+
+      console.log('[add_to] Created', ctx.message.chat.id, field)
+
+      this.metricsService.customMentionsActionCounter.inc({
+        chatId: ctx.message.chat.id.toString(),
+        action: 'mentionAddTo.added',
+      })
+
+      ctx.reply(`${successStr}\n${unsuccessStr}`, {
+        disable_notification: true,
+        parse_mode: 'HTML',
+      })
+    })
+  }
+
+  private registerDeleteFromMentionCommand(): void {
+    this.bot.command('delete_from', async (ctx) => {
+      const field = ctx.message.text.split(' ')[1]
+      if (!field) {
+        console.log('[delete_from] Empty mention', ctx.message.text)
+
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mentionDeleteFrom.emptyMention',
+        })
+
+        ctx.reply(EMPTY_MENTION_TEXT, { parse_mode: 'HTML' })
+        return
+      }
+
+      const mentions = getMentionsFromEntities(
+        ctx.message.text,
+        ctx.message.entities
+      )
+
+      const reversedUsers =
+        await this.userRepository.getUsersIdsByUsernamesInChat(
+          ctx.message.chat.id
+        )
+
+      const result = matchMentionsToUsers(mentions, reversedUsers)
+
+      const wasRemovedMention =
+        await this.mentionRepository.deleteUsersFromMention(
+          ctx.message.chat.id,
+          field,
+          result.successIds
+        )
+
+      if (result.successMentions.length) {
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mentionDeleteFrom.edited',
+        })
+
+        const deletedStr = `✅ Mention <strong>${field}</strong> successfully edited`
+
+        // TODO metrics for missed
+        await ctx.reply(deletedStr, {
+          disable_notification: true,
+          parse_mode: 'HTML',
+        })
+
+        console.log(
+          '[delete_from] Delete from mention',
+          field,
+          result.successIds.length,
+          ctx.message.chat.id
+        )
+
+        if (wasRemovedMention) {
+          this.metricsService.customMentionsActionCounter.inc({
+            chatId: ctx.message.chat.id.toString(),
+            action: 'mentionDeleteFrom.emptyMentionCleaned',
+          })
+          console.log('[delete_from] Clean mention', field, ctx.message.chat.id)
+
+          ctx.reply(CLEAN_UP_EMPTY_MENTION_TEXT, {
+            parse_mode: 'HTML',
+          })
+        }
+
+        return
+      }
+
+      console.log('[delete_from] Problem', field, ctx.message.chat.id, result)
+
+      this.metricsService.customMentionsActionCounter.inc({
+        chatId: ctx.message.chat.id.toString(),
+        action: 'mentionDeleteFrom.problems',
+      })
+
+      ctx.reply(
+        `⚠️ Looks like something wrong with mention, or it is already deleted.
+Contact us via support chat from /help`,
+        {
+          disable_notification: true,
+          parse_mode: 'HTML',
+        }
+      )
+    })
+  }
+
+  private registerDeleteMentionCommand(): void {
+    this.bot.command('delete_mention', async (ctx) => {
+      const field = ctx.message.text.split(' ')[1]
+      if (!field) {
+        console.log('[delete_mention] Empty mention', ctx.message.text)
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mentionDelete.emptyMention',
+        })
+
+        ctx.reply(EMPTY_MENTION_TEXT, { parse_mode: 'HTML' })
+        return
+      }
+
+      const wasDeleted = await this.mentionRepository.deleteMention(
+        ctx.message.chat.id,
+        field
+      )
+
+      if (wasDeleted) {
+        console.log(
+          '[delete_mention] Deleted mention',
+          ctx.message.chat.id,
+          field
+        )
+
+        this.metricsService.customMentionsActionCounter.inc({
+          chatId: ctx.message.chat.id.toString(),
+          action: 'mentionDelete.deleted',
+        })
+
+        ctx.reply(`🗑 Mention <strong>${field}</strong> successfully deleted`, {
+          parse_mode: 'HTML',
+        })
+        return
+      }
+
+      console.log('[delete_mention] Not deleted', ctx.message.chat.id, field)
+
+      this.metricsService.customMentionsActionCounter.inc({
+        chatId: ctx.message.chat.id.toString(),
+        action: 'mentionDelete.noMention',
+      })
+
+      ctx.reply(
+        `🤷‍♂️ There is no mentions with that pattern. Try again or see all your mentions via /mentions_all`,
+        {
+          parse_mode: 'HTML',
+        }
+      )
+    })
+  }
+
   private registerDonateCommand(): void {
     this.bot.command('donate', (ctx) => {
       const msg = this.handleDonateCommand(ctx.chat.id)
@@ -175,22 +629,13 @@ export class Bot {
     this.bot.command('privacy', (ctx) => {
       console.log('[PRIVACY] Send privacy policy')
 
-      const message = `
-🔐 Are you concerned about your security and personal data? <strong>This is right!</strong>
-✅ What do we use? Identifiers of your groups to store data about participants in them: usernames and identifiers to correctly call all users of the group.
-✅ All data is transmitted only via encrypted channels and is not used for other purposes.
-✅ We don't read your messages, don't log data about you in public systems and 3th party services except safe hosting and database.
-🧑‍💻 You can view the project's codebase using Github -  https://github.com/sadfsdfdsa/allbot (also can Star or Fork the Bot project).
-<strong>❗️ Be careful when using unfamiliar bots in your communication, it can be dangerous!</strong>
-`
-
       this.metricsService.commandsCounter.inc({
         chatId: ctx.chat.id.toString(),
         command: 'privacy',
       })
 
       ctx
-        .reply(message, {
+        .reply(PRIVACY_COMMAND_TEXT, {
           reply_to_message_id: ctx.message.message_id,
           parse_mode: 'HTML',
         })
@@ -202,41 +647,13 @@ export class Bot {
     this.bot.command('help', (ctx) => {
       console.log('[HELP] Send help info')
 
-      const msg = `
-<b>❔ How can I mention chat participants?</b>
-You can mention all chat participants using "/all" or by mentioning "@all" anywhere in the message.
-For example: <i>Wanna play some games @all?</i>
-
-<b>❔ Why does the bot give out so many messages?</b>
-Telegram has a limit on mentions - only 5 users receive notifications per message.
-
-<b>❔ Why doesn't the bot mention me?</b>
-Bot can only mention you after your first text message after the bot joins the group.
-
-<b>❔ Why Bot add /donate to message?</b>
-You can use bot for Free, but servers are paid, so you can also support project.
-Bot adds /donate only for big groups - more than 10 people.
-
-<b>❔ How mentions work for members in large (100+) groups?</b>
-Telegram restrict messaging for Bots. So we can send only 20 messages at one time per group.
-Also Telegram send Push only first 5 mentions in a message. So we must split all your group members by 5 and can send only 20 messages.
-There is why we sending 19 messages with 5 mentions and one last big message with all other users. Last message users do not receive Pushes.
-Please contact us in chat if you need that functionality.
-
-<strong>👀 Commands:</strong>
-/donate - help the project pay for the servers 🫰
-/privacy - info about personal data usage and codebase of the Bot 🔐
-
-<strong>💬 Our chat:</strong>
-⚡ Group with updates, for sending bug reports or feature requests - https://t.me/allsuperior_chat
-`
       this.metricsService.commandsCounter.inc({
         chatId: ctx.chat.id.toString(),
         command: 'help',
       })
 
       ctx
-        .reply(msg, {
+        .reply(HELP_COMMAND_TEXT, {
           reply_to_message_id: ctx.message.message_id,
           parse_mode: 'HTML',
         })
@@ -307,139 +724,9 @@ Please contact us in chat if you need that functionality.
 
       this.activeQuery.add(chatId)
 
-      const includePay = usernames.length >= 10 // Large group members count
+      const includePay = usernames.length >= this.INCLUDE_PAY_LIMIT // Large group members count
 
-      const promises = new Array<Promise<unknown>>()
-      const chunkSize = 5 // Telegram limitations for mentions per message
-      const chunksCount = 19 // Telegram limitations for messages
-      const brokenUsers = new Array<string>()
-
-      for (let i = 0; i < usernames.length; i += chunkSize) {
-        const chunk = usernames.slice(i, i + chunkSize)
-
-        const isLastMessage = i >= usernames.length - chunkSize
-
-        const emoji =
-          this.CHRISTMAS_EMOJI[
-            Math.floor(Math.random() * this.CHRISTMAS_EMOJI.length)
-          ] ?? '🔊'
-        const str =
-          `${emoji} ` + chunk.map((username) => `@${username}`).join(', ')
-
-        if (!isLastMessage) {
-          if (promises.length >= chunksCount) {
-            brokenUsers.push(...chunk)
-            continue
-          }
-
-          const execute = async (): Promise<unknown> => {
-            try {
-              const sendingResult = await ctx.sendMessage(str, {
-                parse_mode: 'HTML',
-              })
-              return sendingResult
-            } catch (error) {
-              const response:
-                | undefined
-                | { error_code: number; parameters: { retry_after: number } } =
-                (error as any).response
-
-              if (response?.error_code === 429) {
-                console.log(
-                  '[ALL] Error with timeout=',
-                  response.parameters.retry_after
-                )
-                return new Promise((resolve) => {
-                  setTimeout(async () => {
-                    try {
-                      await ctx.sendMessage(str, {
-                        parse_mode: 'HTML',
-                      })
-                      resolve(null)
-                    } catch (error) {
-                      console.log('[ALL] Add users to broken')
-
-                      brokenUsers.push(...chunk)
-
-                      resolve(null)
-                    }
-                  }, (response.parameters.retry_after + 0.2) * 1000)
-                })
-              }
-
-              console.log(error)
-              return Promise.resolve()
-            }
-          }
-          promises.push(execute())
-        } else {
-          await Promise.all(
-            promises.map((promise) =>
-              promise.catch(this.handleSendMessageError)
-            )
-          ).catch(this.handleSendMessageError)
-
-          const sendLastMsg = async () => {
-            return new Promise(async (resolve) => {
-              console.log('[ALL] Broken users:', brokenUsers.length)
-              let lastStr = str
-
-              if (brokenUsers.length) {
-                lastStr =
-                  lastStr +
-                  ', ' +
-                  brokenUsers.map((username) => `@${username}`).join(', ')
-
-                if (usernames.length > 100) {
-                  lastStr =
-                    lastStr +
-                    `\nPlease read /help for your group with size more than 100`
-                }
-              }
-
-              const inlineKeyboard = [
-                includePay ? [this.DONATE_URL_BUTTON] : [],
-              ]
-
-              try {
-                await ctx.reply(lastStr, {
-                  reply_to_message_id: messageId,
-                  parse_mode: 'HTML',
-                  reply_markup: {
-                    inline_keyboard: inlineKeyboard,
-                  },
-                })
-                resolve(null)
-              } catch (error) {
-                const response:
-                  | undefined
-                  | {
-                      error_code: number
-                      parameters: { retry_after: number }
-                    } = (error as any).response
-
-                if (response?.error_code !== 429) {
-                  console.error(error)
-                  return resolve(null)
-                }
-
-                console.log(
-                  '[ALL] Retry last msg',
-                  response.parameters.retry_after
-                )
-
-                setTimeout(() => {
-                  sendLastMsg()
-                }, (response.parameters.retry_after + 0.2) * 1000)
-              } finally {
-                this.activeQuery.delete(chatId)
-              }
-            })
-          }
-
-          await sendLastMsg()
-        }
-      }
+      await this.mentionPeople(ctx, usernames, includePay)
 
       const END_TIME = Date.now()
 
@@ -461,29 +748,149 @@ Please contact us in chat if you need that functionality.
     })
   }
 
-  private handleDonateCommand(chatId: Chat['id'], command = 'donate'): string {
-    console.log('[PAYMENT] Send payments info')
+  private async mentionPeople(
+    ctx: NarrowedContext<Context, Update.MessageUpdate>,
+    usernames: string[],
+    includePay: boolean
+  ): Promise<void> {
+    const {
+      message: { message_id: messageId },
+      chat: { id: chatId },
+    } = ctx
 
-    const message = `
-🙌 This bot is free to use, but hosting and database are paid options for project. So, if you have opportunity to support, it will be very helpful! 🙌
+    const promises = new Array<Promise<unknown>>()
+    const chunkSize = 5 // Telegram limitations for mentions per message
+    const chunksCount = 19 // Telegram limitations for messages
+    const brokenUsers = new Array<string>()
 
-1️⃣<strong>Support via USDT-TRC20: <code>TJyEa6p3HvAHz34gn7hZHYNwY65iHryu3w</code></strong>👈
+    for (let i = 0; i < usernames.length; i += chunkSize) {
+      const chunk = usernames.slice(i, i + chunkSize)
 
-2️⃣<strong>Support via USDT-ETH: <code>0x7f49e01c13fE782aEB06Dc35a37d357b955b67B0</code></strong>👈
+      const isLastMessage = i >= usernames.length - chunkSize
 
-3️⃣<strong>Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code></strong>👈
+      const emoji =
+        this.CHRISTMAS_EMOJI[
+          Math.floor(Math.random() * this.CHRISTMAS_EMOJI.length)
+        ] ?? '🔊'
+      const str =
+        `${emoji} ` +
+        chunk
+          .map((username) =>
+            username.startsWith('@') ? username : `@${username}`
+          )
+          .join(', ')
 
-Thank you for using and supporting us! ❤️
-`
+      if (!isLastMessage) {
+        if (promises.length >= chunksCount) {
+          brokenUsers.push(...chunk)
+          continue
+        }
 
-    this.metricsService.commandsCounter.inc({
-      chatId: chatId.toString(),
-      command,
-    })
+        const execute = async (): Promise<unknown> => {
+          try {
+            const sendingResult = await ctx.sendMessage(str, {
+              parse_mode: 'HTML',
+            })
+            return sendingResult
+          } catch (error) {
+            const response:
+              | undefined
+              | { error_code: number; parameters: { retry_after: number } } = (
+              error as any
+            ).response
 
-    this.metricsService.updateLatestPaymentsCall(`${chatId}`)
+            if (response?.error_code === 429) {
+              console.log(
+                '[ALL] Error with timeout=',
+                response.parameters.retry_after
+              )
+              return new Promise((resolve) => {
+                setTimeout(async () => {
+                  try {
+                    await ctx.sendMessage(str, {
+                      parse_mode: 'HTML',
+                    })
+                    resolve(null)
+                  } catch (error) {
+                    console.log('[ALL] Add users to broken')
 
-    return message
+                    brokenUsers.push(...chunk)
+
+                    resolve(null)
+                  }
+                }, (response.parameters.retry_after + 0.2) * 1000)
+              })
+            }
+
+            console.log(error)
+            return Promise.resolve()
+          }
+        }
+        promises.push(execute())
+      } else {
+        await Promise.all(
+          promises.map((promise) => promise.catch(this.handleSendMessageError))
+        ).catch(this.handleSendMessageError)
+
+        const sendLastMsg = async () => {
+          return new Promise(async (resolve) => {
+            console.log('[ALL] Broken users:', brokenUsers.length)
+            let lastStr = str
+
+            if (brokenUsers.length) {
+              lastStr =
+                lastStr +
+                ', ' +
+                brokenUsers.map((username) => `@${username}`).join(', ')
+
+              if (usernames.length > 100) {
+                lastStr =
+                  lastStr +
+                  `\nPlease read /help for your group with size more than 100`
+              }
+            }
+
+            const inlineKeyboard = [includePay ? [this.DONATE_URL_BUTTON] : []]
+
+            try {
+              await ctx.reply(lastStr, {
+                reply_to_message_id: messageId,
+                parse_mode: 'HTML',
+                reply_markup: {
+                  inline_keyboard: inlineKeyboard,
+                },
+              })
+              resolve(null)
+            } catch (error) {
+              const response:
+                | undefined
+                | {
+                    error_code: number
+                    parameters: { retry_after: number }
+                  } = (error as any).response
+
+              if (response?.error_code !== 429) {
+                console.error(error)
+                return resolve(null)
+              }
+
+              console.log(
+                '[ALL] Retry last msg',
+                response.parameters.retry_after
+              )
+
+              setTimeout(() => {
+                sendLastMsg()
+              }, (response.parameters.retry_after + 0.2) * 1000)
+            } finally {
+              this.activeQuery.delete(chatId)
+            }
+          })
+        }
+
+        await sendLastMsg()
+      }
+    }
   }
 
   private handleAddMembers(chatId: Chat['id'], users: User[]): Promise<void> {

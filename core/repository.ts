@@ -63,6 +63,48 @@ export class UserRepository {
     console.timeEnd(timeMark)
   }
 
+  public async getUsersUsernamesByIdInChat(
+    chatId: Chat['id']
+  ): Promise<Record<string, string>> {
+    const timeMark = `Get users ${chatId}`
+    console.time(timeMark)
+
+    const dbKey = this.convertId(chatId)
+    const chatUsernamesById = await this.db.hGetAll(dbKey)
+    this.metrics.dbOpsCounter.inc({
+      action: 'getUsersUsernamesByIdInChat',
+    })
+
+    console.timeEnd(timeMark)
+
+    return chatUsernamesById
+  }
+
+  public async getUsersIdsByUsernamesInChat(
+    chatId: Chat['id']
+  ): Promise<Record<string, string>> {
+    const timeMark = `Get users ${chatId}`
+    console.time(timeMark)
+
+    const dbKey = this.convertId(chatId)
+    const chatUsernamesById = await this.db.hGetAll(dbKey)
+    this.metrics.dbOpsCounter.inc({
+      action: 'getUsersIdsByUsernamesInChat',
+    })
+
+    console.timeEnd(timeMark)
+
+    const reversedUsers = Object.entries(chatUsernamesById).reduce<
+      Record<string, string>
+    >((ret, entry) => {
+      const [key, value] = entry
+      ret[value] = key
+      return ret
+    }, {})
+
+    return reversedUsers
+  }
+
   public async getUsernamesByChatId(chatId: Chat['id']): Promise<string[]> {
     const timeMark = `Get users ${chatId}`
     console.time(timeMark)

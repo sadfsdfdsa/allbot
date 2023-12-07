@@ -29,6 +29,10 @@ export class MetricsService {
 
   public readonly replyUsersTimeHistogram: Histogram
 
+  public readonly customMentionsCounter: Counter
+
+  public readonly customMentionsActionCounter: Counter
+
   constructor(
     private readonly db: RedisClientType<any, any, any>,
     measureDefaultMetrics = false
@@ -92,6 +96,20 @@ export class MetricsService {
       labelNames: ['action'],
     })
     this.registry.registerMetric(this.dbOpsCounter)
+
+    this.customMentionsCounter = new Counter({
+      name: 'allbot_custom_mentions',
+      help: 'The number of calls of custom mention',
+      labelNames: ['chatId'],
+    })
+    this.registry.registerMetric(this.customMentionsCounter)
+
+    this.customMentionsActionCounter = new Counter({
+      name: 'allbot_custom_mentions_action',
+      help: 'The number of calls of database calls',
+      labelNames: ['action', 'chatId'],
+    })
+    this.registry.registerMetric(this.customMentionsActionCounter)
 
     if (!measureDefaultMetrics) return
 

@@ -49,6 +49,33 @@ export class UserRepository {
         }
         console.timeEnd(timeMark);
     }
+    async getUsersUsernamesByIdInChat(chatId) {
+        const timeMark = `Get users ${chatId}`;
+        console.time(timeMark);
+        const dbKey = this.convertId(chatId);
+        const chatUsernamesById = await this.db.hGetAll(dbKey);
+        this.metrics.dbOpsCounter.inc({
+            action: 'getUsersUsernamesByIdInChat',
+        });
+        console.timeEnd(timeMark);
+        return chatUsernamesById;
+    }
+    async getUsersIdsByUsernamesInChat(chatId) {
+        const timeMark = `Get users ${chatId}`;
+        console.time(timeMark);
+        const dbKey = this.convertId(chatId);
+        const chatUsernamesById = await this.db.hGetAll(dbKey);
+        this.metrics.dbOpsCounter.inc({
+            action: 'getUsersIdsByUsernamesInChat',
+        });
+        console.timeEnd(timeMark);
+        const reversedUsers = Object.entries(chatUsernamesById).reduce((ret, entry) => {
+            const [key, value] = entry;
+            ret[value] = key;
+            return ret;
+        }, {});
+        return reversedUsers;
+    }
     async getUsernamesByChatId(chatId) {
         const timeMark = `Get users ${chatId}`;
         console.time(timeMark);

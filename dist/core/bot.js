@@ -99,6 +99,7 @@ export class Bot {
             const data = ctx.update.callback_query.data;
             const field = data.replace('/mention-', '');
             console.log('[mention-action]', field, ctx.chat.id);
+            // TODO add mentions as prefix because not receive reply_to message
             this.sendCustomMention(ctx, field).catch(this.handleSendMessageError);
         });
         this.bot.on(message('new_chat_members'), (ctx) => {
@@ -462,11 +463,14 @@ Contact us via support chat from /help`, {
             this.metricsService.replyUsersTimeHistogram.observe(EXECUTE_TIME);
         });
     }
-    async mentionPeople(ctx, usernames, includePay) {
+    async mentionPeople(ctx, usernames, includePay, includeFieldIfNoMessage = undefined) {
         const chatId = ctx.chat?.id;
         if (!chatId)
             return;
         const messageId = ctx.message?.message_id;
+        const prefix = !messageId && includeFieldIfNoMessage
+            ? `${includeFieldIfNoMessage}: `
+            : '';
         const promises = new Array();
         const chunkSize = 5; // Telegram limitations for mentions per message
         const chunksCount = 19; // Telegram limitations for messages
@@ -475,7 +479,7 @@ Contact us via support chat from /help`, {
             const chunk = usernames.slice(i, i + chunkSize);
             const isLastMessage = i >= usernames.length - chunkSize;
             const emoji = this.CHRISTMAS_EMOJI[Math.floor(Math.random() * this.CHRISTMAS_EMOJI.length)] ?? '🔊';
-            const str = `${emoji} ` +
+            const str = `${emoji} ${prefix}` +
                 chunk
                     .map((username) => username.startsWith('@') ? username : `@${username}`)
                     .join(', ');
@@ -613,7 +617,7 @@ Contact us via support chat from /help`, {
             chatId: ctx.chat.id.toString(),
         });
         console.log('[mention] Mention', ctx.chat.id, field, usernamesToMention.length);
-        this.mentionPeople(ctx, usernamesToMention, usernamesToMention.length >= this.INCLUDE_PAY_LIMIT);
+        this.mentionPeople(ctx, usernamesToMention, usernamesToMention.length >= this.INCLUDE_PAY_LIMIT, field);
     }
     async getKeyboardWithCustomMentions(chatId) {
         const data = await this.mentionRepository.getGroupMentions(chatId);

@@ -147,6 +147,7 @@ export class Bot {
 
       console.log('[mention-action]', field, ctx.chat.id)
 
+      // TODO add mentions as prefix because not receive reply_to message
       this.sendCustomMention(ctx, field).catch(this.handleSendMessageError)
     })
 
@@ -713,12 +714,17 @@ Contact us via support chat from /help`,
   private async mentionPeople(
     ctx: UniversalMessageOrActionUpdateCtx,
     usernames: string[],
-    includePay: boolean
+    includePay: boolean,
+    includeFieldIfNoMessage: string | undefined = undefined
   ): Promise<void> {
     const chatId = ctx.chat?.id
     if (!chatId) return
 
     const messageId = ctx.message?.message_id
+    const prefix =
+      !messageId && includeFieldIfNoMessage
+        ? `${includeFieldIfNoMessage}: `
+        : ''
 
     const promises = new Array<Promise<unknown>>()
     const chunkSize = 5 // Telegram limitations for mentions per message
@@ -735,7 +741,7 @@ Contact us via support chat from /help`,
           Math.floor(Math.random() * this.CHRISTMAS_EMOJI.length)
         ] ?? '🔊'
       const str =
-        `${emoji} ` +
+        `${emoji} ${prefix}` +
         chunk
           .map((username) =>
             username.startsWith('@') ? username : `@${username}`
@@ -944,7 +950,8 @@ Contact us via support chat from /help`,
     this.mentionPeople(
       ctx,
       usernamesToMention,
-      usernamesToMention.length >= this.INCLUDE_PAY_LIMIT
+      usernamesToMention.length >= this.INCLUDE_PAY_LIMIT,
+      field
     )
   }
 

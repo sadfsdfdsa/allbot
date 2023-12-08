@@ -139,11 +139,13 @@ export class Bot {
         .catch(this.handleSendMessageError)
     })
 
-    this.bot.action(/^[/mention]+(-[a-z]+)?$/, (ctx) => {
+    this.bot.action(/^[/mention]+(-.+)?$/, (ctx) => {
       if (!ctx.chat?.id) return
 
       const data = (ctx.update.callback_query as any).data as string
       const field = data.replace('/mention-', '')
+
+      console.log('[mention-action]', field, ctx.chat.id)
 
       this.sendCustomMention(ctx, field).catch(this.handleSendMessageError)
     })

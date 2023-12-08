@@ -7,6 +7,10 @@ import { CUSTOM_MENTIONS_PER_GROUP_LIMIT } from './constants/limits.js'
 export class MentionRepository {
   private readonly LIMIT_FOR_GROUP = CUSTOM_MENTIONS_PER_GROUP_LIMIT
 
+  private readonly UNLIMITED_CHAT_IDS_ARR: string[] = [
+    // -4059488811
+  ]
+
   constructor(
     private readonly db: RedisClientType<any, any, any>,
     private readonly metrics: MetricsService,
@@ -39,14 +43,16 @@ export class MentionRepository {
 
     const alreadyInDb = await this.getUsersIdsByMention(chatId, mention)
     if (!alreadyInDb.length) {
-      const count = await this.db.hLen(key)
+      if (!this.UNLIMITED_CHAT_IDS_ARR.includes(chatId.toString())) {
+        const count = await this.db.hLen(key)
 
-      this.metrics.dbOpsCounter.inc({
-        action: 'addUsersToMention#hLen',
-      })
+        this.metrics.dbOpsCounter.inc({
+          action: 'addUsersToMention#hLen',
+        })
 
-      if (count >= this.LIMIT_FOR_GROUP) {
-        return false
+        if (count >= this.LIMIT_FOR_GROUP) {
+          return false
+        }
       }
     }
 

@@ -2,7 +2,13 @@ import { Context, NarrowedContext, Telegraf } from 'telegraf'
 import { UserRepository } from './repository.js'
 import { MetricsService } from './metrics.js'
 import { message } from 'telegraf/filters'
-import { Chat, Update, User } from 'telegraf/types'
+import {
+  CallbackQuery,
+  Chat,
+  InlineKeyboardMarkup,
+  Update,
+  User,
+} from 'telegraf/types'
 import {
   matchMentionsToUsers,
   getMentionsFromEntities,
@@ -21,6 +27,11 @@ import {
 } from './constants/texts.js'
 import { LIMITS_MENTION_FOR_ADDING_PAY } from './constants/limits.js'
 
+type UniversalMessageOrActionUpdateCtx = NarrowedContext<
+  Context,
+  Update.MessageUpdate | Update.CallbackQueryUpdate<CallbackQuery>
+>
+
 export class Bot {
   private bot: Telegraf
 
@@ -32,13 +43,15 @@ export class Bot {
 
   private readonly DONATE_LINK = 'https://www.buymeacoffee.com/karanarqq'
 
+  private readonly BUY_LINK = 'https://www.buymeacoffee.com/karanarqq/e/190652'
+
   private readonly DONATE_URL_BUTTON = {
     url: this.DONATE_LINK,
     text: '☕️ Buy me a coffee',
   }
 
   private readonly BUY_MENTIONS_BUTTON = {
-    url: this.DONATE_LINK,
+    url: this.BUY_LINK,
     text: '♾ Buy Unlimited mentions',
   }
 
@@ -95,9 +108,10 @@ export class Bot {
       //   description: '/delete_mention some_group',
       // },
       // {
-      //   command: 'mentions_all',
+      //   command: 'mentions',
       //   description: 'See info about all your custom mentions',
       // },
+      // TODO rename mention?
     ])
 
     this.registerDonateCommand()
@@ -123,6 +137,15 @@ export class Bot {
           parse_mode: 'HTML',
         })
         .catch(this.handleSendMessageError)
+    })
+
+    this.bot.action(/^[/mention]+(-[a-z]+)?$/, (ctx) => {
+      if (!ctx.chat?.id) return
+
+      const data = (ctx.update.callback_query as any).data as string
+      const field = data.replace('/mention-', '')
+
+      this.sendCustomMention(ctx, field).catch(this.handleSendMessageError)
     })
 
     this.bot.on(message('new_chat_members'), (ctx) => {
@@ -216,7 +239,19 @@ export class Bot {
           action: 'mention.emptyMention',
         })
 
-        ctx.reply(EMPTY_MENTION_TEXT, { parse_mode: 'HTML' })
+        const keyboard = await this.getKeyboardWithCustomMentions(
+          ctx.message.chat.id
+        )
+
+        if (!keyboard) {
+          ctx.reply(NOT_EXISTED_MENTION_TEXT, { parse_mode: 'HTML' })
+          return
+        }
+
+        ctx.reply(`🫂 Custom mentions in the group:`, {
+          parse_mode: 'HTML',
+          reply_markup: keyboard,
+        })
         return
       }
 
@@ -232,105 +267,36 @@ export class Bot {
           action: 'mention.notExisted',
         })
 
-        ctx.reply(NOT_EXISTED_MENTION_TEXT, {
-          parse_mode: 'HTML',
-        })
-        return
-      }
-
-      const ids = await this.mentionRepository.getUsersIdsByMention(
-        ctx.message.chat.id,
-        field
-      )
-      const users = await this.userRepository.getUsersUsernamesByIdInChat(
-        ctx.message.chat.id
-      )
-
-      const idsToDelete: string[] = []
-
-      const usernamesToMention = ids.reduce<string[]>((acc, id) => {
-        const username = users[id]
-        if (!username) {
-          idsToDelete.push(id)
-          return acc
+        const keyboard = await this.getKeyboardWithCustomMentions(
+          ctx.message.chat.id
+        )
+        if (!keyboard) {
+          ctx.reply(NOT_EXISTED_MENTION_TEXT, { parse_mode: 'HTML' })
+          return
         }
 
-        acc.push(username)
-
-        return acc
-      }, [])
-
-      if (idsToDelete.length) {
-        this.metricsService.customMentionsActionCounter.inc({
-          chatId: ctx.message.chat.id.toString(),
-          action: 'mention.deleteBrokeUsers',
-        })
-
-        this.mentionRepository.deleteUsersFromMention(
-          ctx.message.chat.id,
-          field,
-          idsToDelete
-        )
-
-        console.log(
-          '[mention] Clean up',
-          ctx.message.chat.id,
-          field,
-          idsToDelete.length
-        )
-      }
-
-      if (!usernamesToMention.length) {
-        console.log(
-          '[mention] Empty usernames to mention',
-          ctx.message.chat.id,
-          field,
-          usernamesToMention.length
-        )
-
-        this.metricsService.customMentionsActionCounter.inc({
-          chatId: ctx.message.chat.id.toString(),
-          action: 'mention.deleteMention',
-        })
-
-        await this.mentionRepository.deleteMention(ctx.message.chat.id, field)
-        ctx.reply(CLEAN_UP_EMPTY_MENTION_TEXT, {
+        ctx.reply('⚠️ Not existed mention. All mentions in the group:', {
           parse_mode: 'HTML',
+          reply_markup: keyboard,
         })
         return
       }
 
-      this.metricsService.customMentionsCounter.inc({
-        chatId: ctx.message.chat.id.toString(),
-      })
-
-      console.log(
-        '[mention] Mention',
-        ctx.message.chat.id,
-        field,
-        usernamesToMention.length
-      )
-
-      this.mentionPeople(
-        ctx,
-        usernamesToMention,
-        usernamesToMention.length >= this.INCLUDE_PAY_LIMIT
-      )
+      this.sendCustomMention(ctx, field)
     })
   }
 
   private registerGetAllMentionCommand(): void {
-    this.bot.command('mentions_all', async (ctx) => {
-      const data = await this.mentionRepository.getGroupMentions(
+    this.bot.command('mentions', async (ctx) => {
+      const keyboard = await this.getKeyboardWithCustomMentions(
         ctx.message.chat.id
       )
-      const entries = Object.entries(data)
-      if (!entries.length) {
-        console.log('[mentions_all] No mentions', ctx.message.chat.id)
+      if (!keyboard) {
+        console.log('[mentions] No mentions', ctx.message.chat.id)
 
         this.metricsService.customMentionsActionCounter.inc({
           chatId: ctx.message.chat.id.toString(),
-          action: 'mentions_all.emptyMentions',
+          action: 'mentions.emptyMentions',
         })
 
         ctx.reply(
@@ -342,22 +308,16 @@ export class Bot {
         return
       }
 
-      const str = entries.reduce<string>((acc, [key, value], index) => {
-        return (
-          acc +
-          `\n${index + 1}. <strong>${key}</strong>: ${value} <i>member(s)</i>`
-        )
-      }, '')
-
-      console.log('[mentions_all] Print mentions', ctx.message.chat.id)
+      console.log('[mentions] Print mentions', ctx.message.chat.id)
 
       this.metricsService.customMentionsActionCounter.inc({
         chatId: ctx.message.chat.id.toString(),
-        action: 'mentions_all.getAll',
+        action: 'mentions.getAll',
       })
 
-      ctx.reply(`Custom mentions in the group: \n${str}`, {
+      ctx.reply(`🫂 Custom mentions in the group:`, {
         parse_mode: 'HTML',
+        reply_markup: keyboard,
       })
     })
   }
@@ -435,7 +395,7 @@ export class Bot {
         const inlineKeyboard = [[this.BUY_MENTIONS_BUTTON]]
         ctx.reply(
           `🚫 You have been reached a Free limit.
-Need more? Try removing useless mentions using the /mentions_all and /delete_mention commands.
+Need more? Try removing useless mentions using the /mentions and /delete_mention commands.
 <strong>Or you can buy in our store, this is an unlimited quantity, no subscriptions.</strong>
 `,
           {
@@ -599,7 +559,7 @@ Contact us via support chat from /help`,
       })
 
       ctx.reply(
-        `🤷‍♂️ There is no mentions with that pattern. Try again or see all your mentions via /mentions_all`,
+        `🤷‍♂️ There is no mentions with that pattern. Try again or see all your mentions via /mentions`,
         {
           parse_mode: 'HTML',
         }
@@ -749,14 +709,14 @@ Contact us via support chat from /help`,
   }
 
   private async mentionPeople(
-    ctx: NarrowedContext<Context, Update.MessageUpdate>,
+    ctx: UniversalMessageOrActionUpdateCtx,
     usernames: string[],
     includePay: boolean
   ): Promise<void> {
-    const {
-      message: { message_id: messageId },
-      chat: { id: chatId },
-    } = ctx
+    const chatId = ctx.chat?.id
+    if (!chatId) return
+
+    const messageId = ctx.message?.message_id
 
     const promises = new Array<Promise<unknown>>()
     const chunkSize = 5 // Telegram limitations for mentions per message
@@ -903,5 +863,111 @@ Contact us via support chat from /help`,
 
   private handleSendMessageError(error: unknown): void {
     console.error(error)
+  }
+
+  private async sendCustomMention(
+    ctx: UniversalMessageOrActionUpdateCtx,
+    field: string
+  ): Promise<void> {
+    if (!ctx.chat?.id) return
+
+    const ids = await this.mentionRepository.getUsersIdsByMention(
+      ctx.chat.id,
+      field
+    )
+    const users = await this.userRepository.getUsersUsernamesByIdInChat(
+      ctx.chat.id
+    )
+
+    const idsToDelete: string[] = []
+
+    const usernamesToMention = ids.reduce<string[]>((acc, id) => {
+      const username = users[id]
+      if (!username) {
+        idsToDelete.push(id)
+        return acc
+      }
+
+      acc.push(username)
+
+      return acc
+    }, [])
+
+    if (idsToDelete.length) {
+      this.metricsService.customMentionsActionCounter.inc({
+        chatId: ctx.chat.id.toString(),
+        action: 'mention.deleteBrokeUsers',
+      })
+
+      this.mentionRepository.deleteUsersFromMention(
+        ctx.chat.id,
+        field,
+        idsToDelete
+      )
+
+      console.log('[mention] Clean up', ctx.chat.id, field, idsToDelete.length)
+    }
+
+    if (!usernamesToMention.length) {
+      console.log(
+        '[mention] Empty usernames to mention',
+        ctx.chat.id,
+        field,
+        usernamesToMention.length
+      )
+
+      this.metricsService.customMentionsActionCounter.inc({
+        chatId: ctx.chat.id.toString(),
+        action: 'mention.deleteMention',
+      })
+
+      await this.mentionRepository.deleteMention(ctx.chat.id, field)
+      ctx.reply(CLEAN_UP_EMPTY_MENTION_TEXT, {
+        parse_mode: 'HTML',
+      })
+      return
+    }
+
+    this.metricsService.customMentionsCounter.inc({
+      chatId: ctx.chat.id.toString(),
+    })
+
+    console.log(
+      '[mention] Mention',
+      ctx.chat.id,
+      field,
+      usernamesToMention.length
+    )
+
+    this.mentionPeople(
+      ctx,
+      usernamesToMention,
+      usernamesToMention.length >= this.INCLUDE_PAY_LIMIT
+    )
+  }
+
+  private async getKeyboardWithCustomMentions(
+    chatId: Chat['id']
+  ): Promise<InlineKeyboardMarkup | undefined> {
+    const data = await this.mentionRepository.getGroupMentions(chatId)
+    const entries = Object.entries(data)
+    if (!entries.length) {
+      return undefined
+    }
+
+    const keyboard: InlineKeyboardMarkup = {
+      inline_keyboard: [],
+    }
+
+    entries.forEach(([key, value]) => {
+      keyboard.inline_keyboard.push([
+        {
+          callback_data: `/mention-${key}`,
+          text: `${key}: ${value} member(s)`,
+        },
+      ])
+    })
+
+    return keyboard
   }
 }

@@ -4,6 +4,9 @@ export class MentionRepository {
     metrics;
     cache;
     LIMIT_FOR_GROUP = CUSTOM_MENTIONS_PER_GROUP_LIMIT;
+    UNLIMITED_CHAT_IDS_ARR = [
+    // -4059488811
+    ];
     constructor(db, metrics, cache) {
         this.db = db;
         this.metrics = metrics;
@@ -22,12 +25,14 @@ export class MentionRepository {
         const key = this.getKeyForMention(chatId);
         const alreadyInDb = await this.getUsersIdsByMention(chatId, mention);
         if (!alreadyInDb.length) {
-            const count = await this.db.hLen(key);
-            this.metrics.dbOpsCounter.inc({
-                action: 'addUsersToMention#hLen',
-            });
-            if (count >= this.LIMIT_FOR_GROUP) {
-                return false;
+            if (!this.UNLIMITED_CHAT_IDS_ARR.includes(chatId.toString())) {
+                const count = await this.db.hLen(key);
+                this.metrics.dbOpsCounter.inc({
+                    action: 'addUsersToMention#hLen',
+                });
+                if (count >= this.LIMIT_FOR_GROUP) {
+                    return false;
+                }
             }
         }
         const newUsers = [...new Set([...alreadyInDb, ...users])];

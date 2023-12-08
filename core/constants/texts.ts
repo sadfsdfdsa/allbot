@@ -3,7 +3,8 @@ export const NEW_MENTION_EXAMPLE = `<code>/add_to NEW_MENTION @user @user2</code
 export const EMPTY_MENTION_TEXT =
   '⚠️ Error while parsing mention. Please use:\n<code>/mention some_existing_mention</code>'
 
-export const NOT_EXISTED_MENTION_TEXT = `⚠️ Not existed or empty mention. Please create new:\n${NEW_MENTION_EXAMPLE}`
+export const NOT_EXISTED_MENTION_TEXT = `⚠️ Not existed or empty mention.
+\nSee all via /mentions or create new one:\n${NEW_MENTION_EXAMPLE}`
 
 export const CLEAN_UP_EMPTY_MENTION_TEXT = `🧹 This is an empty mention. We clean it up.`
 

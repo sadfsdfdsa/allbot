@@ -6,8 +6,11 @@ import { MetricsService } from './core/metrics.js'
 import { Server } from './core/server.js'
 import { CacheService } from './core/cache.js'
 import { MentionRepository } from './core/mentionRepository.js'
+import { PaymentsRepository } from './core/paymentsRepository.js'
 
 const main = async (): Promise<void> => {
+  const paymentsRepository = new PaymentsRepository(process.env.MENTIONS_LIMIT)
+
   const dbClient = await createDB(process.env.REDIS_URI)
 
   const metricsService = new MetricsService(dbClient)
@@ -21,7 +24,7 @@ const main = async (): Promise<void> => {
   const mentionRepository = new MentionRepository(
     dbClient,
     metricsService,
-    cache
+    paymentsRepository
   )
 
   const bot = new Bot(

@@ -1,17 +1,12 @@
-import { CUSTOM_MENTIONS_PER_GROUP_LIMIT } from './constants/limits.js';
 export class MentionRepository {
     db;
     metrics;
-    cache;
-    LIMIT_FOR_GROUP = CUSTOM_MENTIONS_PER_GROUP_LIMIT;
-    UNLIMITED_CHAT_IDS_ARR = [
-    // -4059488811
-    ];
-    constructor(db, metrics, cache) {
+    paymentsRepository;
+    constructor(db, metrics, paymentsRepository) {
         this.db = db;
         this.metrics = metrics;
-        this.cache = cache;
-        console.log('[LAUNCH] Init Mention repository', this.cache, this.metrics);
+        this.paymentsRepository = paymentsRepository;
+        console.log('[LAUNCH] Init Mention repository');
     }
     async checkIfMentionExists(chatId, mention) {
         const key = this.getKeyForMention(chatId);
@@ -25,12 +20,14 @@ export class MentionRepository {
         const key = this.getKeyForMention(chatId);
         const alreadyInDb = await this.getUsersIdsByMention(chatId, mention);
         if (!alreadyInDb.length) {
-            if (!this.UNLIMITED_CHAT_IDS_ARR.includes(chatId.toString())) {
+            const LIMIT = this.paymentsRepository.getLimitByChatId(chatId);
+            console.log('[mentionRepository.limit] Check limit', LIMIT, chatId);
+            if (LIMIT !== 'unlimited') {
                 const count = await this.db.hLen(key);
                 this.metrics.dbOpsCounter.inc({
                     action: 'addUsersToMention#hLen',
                 });
-                if (count >= this.LIMIT_FOR_GROUP) {
+                if (count >= LIMIT) {
                     return false;
                 }
             }

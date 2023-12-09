@@ -1,22 +1,15 @@
 import { RedisClientType } from 'redis'
-import { CacheService } from './cache.js'
 import { MetricsService } from './metrics.js'
 import { Chat } from 'telegraf/types'
-import { CUSTOM_MENTIONS_PER_GROUP_LIMIT } from './constants/limits.js'
+import { PaymentsRepository } from './paymentsRepository.js'
 
 export class MentionRepository {
-  private readonly LIMIT_FOR_GROUP = CUSTOM_MENTIONS_PER_GROUP_LIMIT
-
-  private readonly UNLIMITED_CHAT_IDS_ARR: string[] = [
-    // -4059488811
-  ]
-
   constructor(
     private readonly db: RedisClientType<any, any, any>,
     private readonly metrics: MetricsService,
-    private readonly cache: CacheService
+    private readonly paymentsRepository: PaymentsRepository
   ) {
-    console.log('[LAUNCH] Init Mention repository', this.cache, this.metrics)
+    console.log('[LAUNCH] Init Mention repository')
   }
 
   public async checkIfMentionExists(
@@ -43,14 +36,17 @@ export class MentionRepository {
 
     const alreadyInDb = await this.getUsersIdsByMention(chatId, mention)
     if (!alreadyInDb.length) {
-      if (!this.UNLIMITED_CHAT_IDS_ARR.includes(chatId.toString())) {
+      const LIMIT = this.paymentsRepository.getLimitByChatId(chatId)
+      console.log('[mentionRepository.limit] Check limit', LIMIT, chatId)
+
+      if (LIMIT !== 'unlimited') {
         const count = await this.db.hLen(key)
 
         this.metrics.dbOpsCounter.inc({
           action: 'addUsersToMention#hLen',
         })
 
-        if (count >= this.LIMIT_FOR_GROUP) {
+        if (count >= LIMIT) {
           return false
         }
       }

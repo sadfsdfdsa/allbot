@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { matchMentionsToUsers, getMentionsFromEntities, isChatGroup, } from './utils/utils.js';
-import { ADDED_TO_CHAT_WELCOME_TEXT, CLEAN_UP_EMPTY_MENTION_TEXT, DONATE_COMMAND_TEXT, EMPTY_MENTION_TEXT, HELP_COMMAND_TEXT, NEW_MENTION_EXAMPLE, NOT_EXISTED_MENTION_TEXT, PRIVACY_COMMAND_TEXT, } from './constants/texts.js';
+import { ADDED_TO_CHAT_WELCOME_TEXT, CLEAN_UP_EMPTY_MENTION_TEXT, DONATE_COMMAND_TEXT, EMPTY_DELETE_FROM_MENTION_TEXT, EMPTY_DELETE_MENTION_TEXT, HELP_COMMAND_TEXT, INTRODUCE_CUSTOM_MENTIONS_TEXT, NEW_MENTION_EXAMPLE, NOT_EXISTED_MENTION_TEXT, PRIVACY_COMMAND_TEXT, } from './constants/texts.js';
 import { LIMITS_MENTION_FOR_ADDING_PAY } from './constants/limits.js';
 export class Bot {
     userRepository;
@@ -19,7 +19,7 @@ export class Bot {
     };
     BUY_MENTIONS_BUTTON = {
         url: this.BUY_LINK,
-        text: '♾ Buy Unlimited mentions',
+        text: '🔥 Buy Unlimited mentions',
     };
     isListening = false;
     activeQuery = new Set();
@@ -40,36 +40,37 @@ export class Bot {
                 description: 'Mention all users in a group',
             },
             {
-                command: 'donate',
-                description: 'Support the project to pay for servers and new features',
+                command: 'mention',
+                description: '/mention some_group with additional text',
+            },
+            {
+                command: 'mentions',
+                description: 'See info about all your custom mentions',
+            },
+            {
+                command: 'add_to',
+                description: '/add_to some_group @user1 @user2',
+            },
+            {
+                command: 'delete_from',
+                description: '/delete_from some_group @user1 @user2',
+            },
+            {
+                command: 'delete_mention',
+                description: '/delete_mention some_group',
             },
             {
                 command: 'help',
                 description: 'Help information',
             },
             {
-                command: 'privacy',
-                description: 'How the Bot takes care of your personal data',
+                command: 'donate',
+                description: 'Support the project to pay for servers and new features',
             },
+            // Disable for smallest commands line
             // {
-            //   command: 'mention',
-            //   description: '/mention some_group with additional text',
-            // },
-            // {
-            //   command: 'add_to',
-            //   description: '/add_to some_group @user1 @user2',
-            // },
-            // {
-            //   command: 'delete_from',
-            //   description: '/delete_from some_group @user1 @user2',
-            // },
-            // {
-            //   command: 'delete_mention',
-            //   description: '/delete_mention some_group',
-            // },
-            // {
-            //   command: 'mentions',
-            //   description: 'See info about all your custom mentions',
+            //   command: 'privacy',
+            //   description: 'How the Bot takes care of your personal data',
             // },
             // TODO rename mention?
         ]);
@@ -99,8 +100,23 @@ export class Bot {
             const data = ctx.update.callback_query.data;
             const field = data.replace('/mention-', '');
             console.log('[mention-action]', field, ctx.chat.id);
-            // TODO add mentions as prefix because not receive reply_to message
             this.sendCustomMention(ctx, field).catch(this.handleSendMessageError);
+        });
+        this.bot.action('/intro_custom_mentions', (ctx) => {
+            if (!ctx.chat?.id)
+                return;
+            this.metricsService.customMentionsActionCounter.inc({
+                chatId: ctx.chat.id.toString(),
+                action: 'mention.showIntro',
+            });
+            ctx
+                .reply(INTRODUCE_CUSTOM_MENTIONS_TEXT, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [[this.BUY_MENTIONS_BUTTON]],
+                },
+            })
+                .catch(this.handleSendMessageError);
         });
         this.bot.on(message('new_chat_members'), (ctx) => {
             const { chat, message } = ctx;
@@ -157,6 +173,14 @@ export class Bot {
     }
     registerMentionCommand() {
         this.bot.command('mention', async (ctx) => {
+            if (!isChatGroup(ctx.message.chat.id)) {
+                ctx
+                    .reply(`👥 Only available in groups`, {
+                    parse_mode: 'HTML',
+                })
+                    .catch(this.handleSendMessageError);
+                return;
+            }
             const field = ctx.message.text.split(' ')[1];
             if (!field) {
                 console.log('[mention] Empty mention', ctx.message.text);
@@ -166,13 +190,17 @@ export class Bot {
                 });
                 const keyboard = await this.getKeyboardWithCustomMentions(ctx.message.chat.id);
                 if (!keyboard) {
-                    ctx.reply(NOT_EXISTED_MENTION_TEXT, { parse_mode: 'HTML' });
+                    ctx
+                        .reply(NOT_EXISTED_MENTION_TEXT, { parse_mode: 'HTML' })
+                        .catch(this.handleSendMessageError);
                     return;
                 }
-                ctx.reply(`🫂 Custom mentions in the group:`, {
+                ctx
+                    .reply(`🫂 Custom mentions in the group:`, {
                     parse_mode: 'HTML',
                     reply_markup: keyboard,
-                });
+                })
+                    .catch(this.handleSendMessageError);
                 return;
             }
             const isExists = await this.mentionRepository.checkIfMentionExists(ctx.message.chat.id, field);
@@ -184,13 +212,17 @@ export class Bot {
                 });
                 const keyboard = await this.getKeyboardWithCustomMentions(ctx.message.chat.id);
                 if (!keyboard) {
-                    ctx.reply(NOT_EXISTED_MENTION_TEXT, { parse_mode: 'HTML' });
+                    ctx
+                        .reply(NOT_EXISTED_MENTION_TEXT, { parse_mode: 'HTML' })
+                        .catch(this.handleSendMessageError);
                     return;
                 }
-                ctx.reply('⚠️ Not existed mention. All mentions in the group:', {
+                ctx
+                    .reply('⚠️ Not existed mention. All mentions in the group:', {
                     parse_mode: 'HTML',
                     reply_markup: keyboard,
-                });
+                })
+                    .catch(this.handleSendMessageError);
                 return;
             }
             this.sendCustomMention(ctx, field);
@@ -198,6 +230,14 @@ export class Bot {
     }
     registerGetAllMentionCommand() {
         this.bot.command('mentions', async (ctx) => {
+            if (!isChatGroup(ctx.message.chat.id)) {
+                ctx
+                    .reply(`👥 Only available in groups`, {
+                    parse_mode: 'HTML',
+                })
+                    .catch(this.handleSendMessageError);
+                return;
+            }
             const keyboard = await this.getKeyboardWithCustomMentions(ctx.message.chat.id);
             if (!keyboard) {
                 console.log('[mentions] No mentions', ctx.message.chat.id);
@@ -205,9 +245,11 @@ export class Bot {
                     chatId: ctx.message.chat.id.toString(),
                     action: 'mentions.emptyMentions',
                 });
-                ctx.reply(`0️⃣ There is no custom mentions. Try it out:\n${NEW_MENTION_EXAMPLE}`, {
+                ctx
+                    .reply(`0️⃣ There is no custom mentions. Try it out:\n${NEW_MENTION_EXAMPLE}`, {
                     parse_mode: 'HTML',
-                });
+                })
+                    .catch(this.handleSendMessageError);
                 return;
             }
             console.log('[mentions] Print mentions', ctx.message.chat.id);
@@ -215,14 +257,24 @@ export class Bot {
                 chatId: ctx.message.chat.id.toString(),
                 action: 'mentions.getAll',
             });
-            ctx.reply(`🫂 Custom mentions in the group:`, {
+            ctx
+                .reply(`🫂 Custom mentions in the group:`, {
                 parse_mode: 'HTML',
                 reply_markup: keyboard,
-            });
+            })
+                .catch(this.handleSendMessageError);
         });
     }
     registerAddToMentionCommand() {
         this.bot.command('add_to', async (ctx) => {
+            if (!isChatGroup(ctx.message.chat.id)) {
+                ctx
+                    .reply(`👥 Only available in groups`, {
+                    parse_mode: 'HTML',
+                })
+                    .catch(this.handleSendMessageError);
+                return;
+            }
             const field = ctx.message.text.split(' ')[1];
             if (!field) {
                 console.log('[add_to] Empty mention', ctx.message.text);
@@ -230,7 +282,9 @@ export class Bot {
                     chatId: ctx.message.chat.id.toString(),
                     action: 'mentionAddTo.emptyMention',
                 });
-                ctx.reply(EMPTY_MENTION_TEXT, { parse_mode: 'HTML' });
+                ctx
+                    .reply(NOT_EXISTED_MENTION_TEXT, { parse_mode: 'HTML' })
+                    .catch(this.handleSendMessageError);
                 return;
             }
             const mentions = getMentionsFromEntities(ctx.message.text, ctx.message.entities);
@@ -246,9 +300,11 @@ export class Bot {
                     action: 'mentionAddTo.emptyCreating',
                 });
                 const notCreated = `🚫 <strong>Mention did not created</strong>. Add someone from the group as initial members.`;
-                ctx.reply(`${notCreated}\n${unsuccessStr}`, {
+                ctx
+                    .reply(`${notCreated}\n${unsuccessStr}`, {
                     parse_mode: 'HTML',
-                });
+                })
+                    .catch(this.handleSendMessageError);
                 return;
             }
             const isSuccess = await this.mentionRepository.addUsersToMention(ctx.message.chat.id, field, successIds);
@@ -259,7 +315,8 @@ export class Bot {
                     action: 'mentionAddTo.limitsReached',
                 });
                 const inlineKeyboard = [[this.BUY_MENTIONS_BUTTON]];
-                ctx.reply(`🚫 You have been reached a Free limit.
+                ctx
+                    .reply(`🚫 You have been reached a Free limit.
 Need more? Try removing useless mentions using the /mentions and /delete_mention commands.
 <strong>Or you can buy in our store, this is an unlimited quantity, no subscriptions.</strong>
 `, {
@@ -267,7 +324,8 @@ Need more? Try removing useless mentions using the /mentions and /delete_mention
                     reply_markup: {
                         inline_keyboard: inlineKeyboard,
                     },
-                });
+                })
+                    .catch(this.handleSendMessageError);
                 return;
             }
             const successStr = `➕ In mention <strong>${field}</strong> added: ${successMentions.join(', ')}`;
@@ -276,14 +334,24 @@ Need more? Try removing useless mentions using the /mentions and /delete_mention
                 chatId: ctx.message.chat.id.toString(),
                 action: 'mentionAddTo.added',
             });
-            ctx.reply(`${successStr}\n${unsuccessStr}`, {
+            ctx
+                .reply(`${successStr}\n${unsuccessStr}`, {
                 disable_notification: true,
                 parse_mode: 'HTML',
-            });
+            })
+                .catch(this.handleSendMessageError);
         });
     }
     registerDeleteFromMentionCommand() {
         this.bot.command('delete_from', async (ctx) => {
+            if (!isChatGroup(ctx.message.chat.id)) {
+                ctx
+                    .reply(`👥 Only available in groups`, {
+                    parse_mode: 'HTML',
+                })
+                    .catch(this.handleSendMessageError);
+                return;
+            }
             const field = ctx.message.text.split(' ')[1];
             if (!field) {
                 console.log('[delete_from] Empty mention', ctx.message.text);
@@ -291,7 +359,9 @@ Need more? Try removing useless mentions using the /mentions and /delete_mention
                     chatId: ctx.message.chat.id.toString(),
                     action: 'mentionDeleteFrom.emptyMention',
                 });
-                ctx.reply(EMPTY_MENTION_TEXT, { parse_mode: 'HTML' });
+                ctx
+                    .reply(EMPTY_DELETE_FROM_MENTION_TEXT, { parse_mode: 'HTML' })
+                    .catch(this.handleSendMessageError);
                 return;
             }
             const mentions = getMentionsFromEntities(ctx.message.text, ctx.message.entities);
@@ -304,11 +374,12 @@ Need more? Try removing useless mentions using the /mentions and /delete_mention
                     action: 'mentionDeleteFrom.edited',
                 });
                 const deletedStr = `✅ Mention <strong>${field}</strong> successfully edited`;
-                // TODO metrics for missed
-                await ctx.reply(deletedStr, {
+                await ctx
+                    .reply(deletedStr, {
                     disable_notification: true,
                     parse_mode: 'HTML',
-                });
+                })
+                    .catch(this.handleSendMessageError);
                 console.log('[delete_from] Delete from mention', field, result.successIds.length, ctx.message.chat.id);
                 if (wasRemovedMention) {
                     this.metricsService.customMentionsActionCounter.inc({
@@ -316,9 +387,11 @@ Need more? Try removing useless mentions using the /mentions and /delete_mention
                         action: 'mentionDeleteFrom.emptyMentionCleaned',
                     });
                     console.log('[delete_from] Clean mention', field, ctx.message.chat.id);
-                    ctx.reply(CLEAN_UP_EMPTY_MENTION_TEXT, {
+                    ctx
+                        .reply(CLEAN_UP_EMPTY_MENTION_TEXT, {
                         parse_mode: 'HTML',
-                    });
+                    })
+                        .catch(this.handleSendMessageError);
                 }
                 return;
             }
@@ -327,15 +400,25 @@ Need more? Try removing useless mentions using the /mentions and /delete_mention
                 chatId: ctx.message.chat.id.toString(),
                 action: 'mentionDeleteFrom.problems',
             });
-            ctx.reply(`⚠️ Looks like something wrong with mention, or it is already deleted.
+            ctx
+                .reply(`⚠️ Looks like something wrong with mention, or it is already deleted.
 Contact us via support chat from /help`, {
                 disable_notification: true,
                 parse_mode: 'HTML',
-            });
+            })
+                .catch(this.handleSendMessageError);
         });
     }
     registerDeleteMentionCommand() {
         this.bot.command('delete_mention', async (ctx) => {
+            if (!isChatGroup(ctx.message.chat.id)) {
+                ctx
+                    .reply(`👥 Only available in groups`, {
+                    parse_mode: 'HTML',
+                })
+                    .catch(this.handleSendMessageError);
+                return;
+            }
             const field = ctx.message.text.split(' ')[1];
             if (!field) {
                 console.log('[delete_mention] Empty mention', ctx.message.text);
@@ -343,7 +426,9 @@ Contact us via support chat from /help`, {
                     chatId: ctx.message.chat.id.toString(),
                     action: 'mentionDelete.emptyMention',
                 });
-                ctx.reply(EMPTY_MENTION_TEXT, { parse_mode: 'HTML' });
+                ctx
+                    .reply(EMPTY_DELETE_MENTION_TEXT, { parse_mode: 'HTML' })
+                    .catch(this.handleSendMessageError);
                 return;
             }
             const wasDeleted = await this.mentionRepository.deleteMention(ctx.message.chat.id, field);
@@ -353,9 +438,11 @@ Contact us via support chat from /help`, {
                     chatId: ctx.message.chat.id.toString(),
                     action: 'mentionDelete.deleted',
                 });
-                ctx.reply(`🗑 Mention <strong>${field}</strong> successfully deleted`, {
+                ctx
+                    .reply(`🗑 Mention <strong>${field}</strong> successfully deleted`, {
                     parse_mode: 'HTML',
-                });
+                })
+                    .catch(this.handleSendMessageError);
                 return;
             }
             console.log('[delete_mention] Not deleted', ctx.message.chat.id, field);
@@ -363,15 +450,20 @@ Contact us via support chat from /help`, {
                 chatId: ctx.message.chat.id.toString(),
                 action: 'mentionDelete.noMention',
             });
-            ctx.reply(`🤷‍♂️ There is no mentions with that pattern. Try again or see all your mentions via /mentions`, {
+            ctx
+                .reply(`🤷‍♂️ There is no mentions with that pattern. Try again or see all your mentions via /mentions`, {
                 parse_mode: 'HTML',
-            });
+            })
+                .catch(this.handleSendMessageError);
         });
     }
     registerDonateCommand() {
         this.bot.command('donate', (ctx) => {
             const msg = this.handleDonateCommand(ctx.chat.id);
-            const inlineKeyboard = [[this.DONATE_URL_BUTTON]];
+            const inlineKeyboard = [
+                [this.DONATE_URL_BUTTON],
+                [this.BUY_MENTIONS_BUTTON],
+            ];
             ctx
                 .reply(msg, {
                 reply_to_message_id: ctx.message.message_id,
@@ -416,11 +508,25 @@ Contact us via support chat from /help`, {
     registerHandleMessage() {
         this.bot.on(message('text'), async (ctx) => {
             const { message: { from, text, message_id: messageId }, chat: { id: chatId }, } = ctx;
+            const introduceBtn = {
+                callback: '/intro_custom_mentions',
+                text: '💥 Introduce custom mentions!',
+            };
+            const reply_markup = {
+                inline_keyboard: [
+                    [
+                        {
+                            callback_data: introduceBtn.callback,
+                            text: introduceBtn.text,
+                        },
+                    ],
+                ],
+            };
             const START_TIME = Date.now();
             if (!isChatGroup(chatId)) {
                 console.log(`[DIRECT_MSG] Direct message from ${ctx.message.text}`, from.username);
                 await ctx
-                    .reply(`👥 Add me to your group, here is example @all mention for you:`, {
+                    .reply(`👥 Add me to your group, here is example @all mention for you (but also you can use custom mentions with me!):`, {
                     parse_mode: 'HTML',
                 })
                     .catch(this.handleSendMessageError);
@@ -429,6 +535,7 @@ Contact us via support chat from /help`, {
                     .reply(`${startText} @${from.username}`, {
                     reply_to_message_id: messageId,
                     parse_mode: 'HTML',
+                    reply_markup,
                 })
                     .catch(this.handleSendMessageError);
                 return;
@@ -442,8 +549,18 @@ Contact us via support chat from /help`, {
             // const usernames = new Array<string>(255)
             //   .fill('item')
             //   .map((_, index) => `test${index}`)
-            if (!usernames.length)
+            if (!usernames.length) {
+                console.log('[ALL] Noone to mention', ctx.message.chat.id);
+                ctx.reply(`🙈 It seems there is no one else here.
+Someone should write something (read more /help).
+<strong>You also can use our new feature!</strong>
+`, {
+                    reply_to_message_id: ctx.message.message_id,
+                    parse_mode: 'HTML',
+                    reply_markup,
+                });
                 return;
+            }
             if (this.activeQuery.has(chatId)) {
                 console.log('[ALL] Block spam', chatId);
                 return;
@@ -451,7 +568,10 @@ Contact us via support chat from /help`, {
             console.log(`[ALL] Start mention`, usernames.length, chatId);
             this.activeQuery.add(chatId);
             const includePay = usernames.length >= this.INCLUDE_PAY_LIMIT; // Large group members count
-            await this.mentionPeople(ctx, usernames, includePay);
+            await this.mentionPeople(ctx, usernames, {
+                includePay: false,
+                includePromo: introduceBtn,
+            });
             const END_TIME = Date.now();
             const EXECUTE_TIME = END_TIME - START_TIME;
             console.log(`[ALL] Mention with pattern in group for ${usernames.length} people, TIME=${EXECUTE_TIME}, includePay=${includePay}`, chatId);
@@ -463,13 +583,13 @@ Contact us via support chat from /help`, {
             this.metricsService.replyUsersTimeHistogram.observe(EXECUTE_TIME);
         });
     }
-    async mentionPeople(ctx, usernames, includePay, includeFieldIfNoMessage = undefined) {
+    async mentionPeople(ctx, usernames, options) {
         const chatId = ctx.chat?.id;
         if (!chatId)
             return;
         const messageId = ctx.message?.message_id;
-        const prefix = !messageId && includeFieldIfNoMessage
-            ? `${includeFieldIfNoMessage}: `
+        const prefix = !messageId && options.includeFieldIfNoMessage
+            ? `${options.includeFieldIfNoMessage}: `
             : '';
         const promises = new Array();
         const chunkSize = 5; // Telegram limitations for mentions per message
@@ -538,7 +658,17 @@ Contact us via support chat from /help`, {
                                         `\nPlease read /help for your group with size more than 100`;
                             }
                         }
-                        const inlineKeyboard = [includePay ? [this.DONATE_URL_BUTTON] : []];
+                        const inlineKeyboard = [
+                            options.includePay ? [this.DONATE_URL_BUTTON] : [],
+                            options.includePromo
+                                ? [
+                                    {
+                                        text: options.includePromo.text,
+                                        callback_data: options.includePromo.callback,
+                                    },
+                                ]
+                                : [],
+                        ];
                         try {
                             await ctx.reply(lastStr, {
                                 reply_to_message_id: messageId,
@@ -551,6 +681,19 @@ Contact us via support chat from /help`, {
                         }
                         catch (error) {
                             const response = error.response;
+                            if (response?.error_code === 400 &&
+                                response.description ===
+                                    'Bad Request: message to reply not found') {
+                                await ctx
+                                    .reply(lastStr, {
+                                    parse_mode: 'HTML',
+                                    reply_markup: {
+                                        inline_keyboard: inlineKeyboard,
+                                    },
+                                })
+                                    .catch(this.handleSendMessageError);
+                                return;
+                            }
                             if (response?.error_code !== 429) {
                                 console.error(error);
                                 return resolve(null);
@@ -608,16 +751,21 @@ Contact us via support chat from /help`, {
                 action: 'mention.deleteMention',
             });
             await this.mentionRepository.deleteMention(ctx.chat.id, field);
-            ctx.reply(CLEAN_UP_EMPTY_MENTION_TEXT, {
+            ctx
+                .reply(CLEAN_UP_EMPTY_MENTION_TEXT, {
                 parse_mode: 'HTML',
-            });
+            })
+                .catch(this.handleSendMessageError);
             return;
         }
         this.metricsService.customMentionsCounter.inc({
             chatId: ctx.chat.id.toString(),
         });
         console.log('[mention] Mention', ctx.chat.id, field, usernamesToMention.length);
-        this.mentionPeople(ctx, usernamesToMention, usernamesToMention.length >= this.INCLUDE_PAY_LIMIT, field);
+        this.mentionPeople(ctx, usernamesToMention, {
+            includePay: usernamesToMention.length >= this.INCLUDE_PAY_LIMIT,
+            includeFieldIfNoMessage: field,
+        });
     }
     async getKeyboardWithCustomMentions(chatId) {
         const data = await this.mentionRepository.getGroupMentions(chatId);

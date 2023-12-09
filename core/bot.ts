@@ -148,7 +148,7 @@ export class Bot {
       const data = (ctx.update.callback_query as any).data as string
       const field = data.replace('/mention-', '')
 
-      console.log('[mention-action]', field, ctx.chat.id)
+      console.log('[mention-action]', field, ctx.chat.id, ctx.from)
 
       this.sendCustomMention(ctx, field).catch(this.handleSendMessageError)
     })
@@ -1131,9 +1131,14 @@ Someone should write something (read more /help).
       usernamesToMention.length
     )
 
+    let fieldWithMentioner = `${field}`
+    if (ctx.from) {
+      fieldWithMentioner += ` from <a href="tg://user?id=${ctx.from.id}">${ctx.from.username}</a>`
+    }
+
     this.mentionPeople(ctx, usernamesToMention, {
       includePay: usernamesToMention.length >= this.INCLUDE_PAY_LIMIT,
-      includeFieldIfNoMessage: field,
+      includeFieldIfNoMessage: fieldWithMentioner,
     })
   }
 

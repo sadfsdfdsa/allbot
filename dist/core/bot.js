@@ -3,6 +3,7 @@ import { message } from 'telegraf/filters';
 import { matchMentionsToUsers, getMentionsFromEntities, isChatGroup, } from './utils/utils.js';
 import { ADDED_TO_CHAT_WELCOME_TEXT, CLEAN_UP_EMPTY_MENTION_TEXT, DONATE_COMMAND_TEXT, EMPTY_DELETE_FROM_MENTION_TEXT, EMPTY_DELETE_MENTION_TEXT, HELP_COMMAND_TEXT, INTRODUCE_CUSTOM_MENTIONS_TEXT, NEW_MENTION_EXAMPLE, NOT_EXISTED_MENTION_TEXT, PRIVACY_COMMAND_TEXT, } from './constants/texts.js';
 import { LIMITS_MENTION_FOR_ADDING_PAY } from './constants/limits.js';
+// TODO make payments via Tg Wallet
 export class Bot {
     userRepository;
     metricsService;
@@ -32,7 +33,7 @@ export class Bot {
         if (botName)
             this.MENTION_COMMANDS.push(botName);
         this.bot = new Telegraf(token, {
-            handlerTimeout: Number.POSITIVE_INFINITY,
+            handlerTimeout: 200_000,
         });
         this.bot.telegram.setMyCommands([
             {
@@ -144,6 +145,9 @@ export class Bot {
         this.isListening = true;
         process.once('SIGINT', () => this.bot.stop('SIGINT'));
         process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
+        this.bot.catch((err) => {
+            this.handleSendMessageError(err);
+        });
         this.bot.launch();
     }
     tryDetectBotAddOrDelete(chatId, members, action) {
@@ -551,7 +555,7 @@ Contact us via support chat from /help`, {
             //   .map((_, index) => `test${index}`)
             if (!usernames.length) {
                 console.log('[ALL] Noone to mention', ctx.message.chat.id);
-                ctx.reply(`🙈 It seems there is no one else here.
+                await ctx.reply(`🙈 It seems there is no one else here.
 Someone should write something (read more /help).
 <strong>You also can use our new feature!</strong>
 `, {
@@ -684,8 +688,9 @@ Someone should write something (read more /help).
                             if (response?.error_code === 400 &&
                                 response.description ===
                                     'Bad Request: message to reply not found') {
-                                await ctx
-                                    .reply(lastStr, {
+                                console.log('[ALL] Retry because can not reply to not found msg', response);
+                                await this.bot.telegram
+                                    .sendMessage(chatId, lastStr, {
                                     parse_mode: 'HTML',
                                     reply_markup: {
                                         inline_keyboard: inlineKeyboard,

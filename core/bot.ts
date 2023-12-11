@@ -34,6 +34,8 @@ type UniversalMessageOrActionUpdateCtx = NarrowedContext<
   Update.MessageUpdate | Update.CallbackQueryUpdate<CallbackQuery>
 >
 
+// TODO make payments via Tg Wallet
+
 export class Bot {
   private bot: Telegraf
 
@@ -73,7 +75,7 @@ export class Bot {
     if (botName) this.MENTION_COMMANDS.push(botName)
 
     this.bot = new Telegraf(token, {
-      handlerTimeout: Number.POSITIVE_INFINITY,
+      handlerTimeout: 200_000,
     })
 
     this.bot.telegram.setMyCommands([
@@ -212,6 +214,10 @@ export class Bot {
 
     process.once('SIGINT', () => this.bot.stop('SIGINT'))
     process.once('SIGTERM', () => this.bot.stop('SIGTERM'))
+
+    this.bot.catch((err) => {
+      this.handleSendMessageError(err)
+    })
 
     this.bot.launch()
   }
@@ -809,7 +815,7 @@ Contact us via support chat from /help`,
 
       if (!usernames.length) {
         console.log('[ALL] Noone to mention', ctx.message.chat.id)
-        ctx.reply(
+        await ctx.reply(
           `🙈 It seems there is no one else here.
 Someone should write something (read more /help).
 <strong>You also can use our new feature!</strong>
@@ -1007,8 +1013,13 @@ Someone should write something (read more /help).
                 response.description ===
                   'Bad Request: message to reply not found'
               ) {
-                await ctx
-                  .reply(lastStr, {
+                console.log(
+                  '[ALL] Retry because can not reply to not found msg',
+                  response
+                )
+
+                await this.bot.telegram
+                  .sendMessage(chatId, lastStr, {
                     parse_mode: 'HTML',
                     reply_markup: {
                       inline_keyboard: inlineKeyboard,

@@ -790,7 +790,6 @@ Contact us via support chat from /help`,
           .reply(`${startText} @${from.username}`, {
             reply_to_message_id: messageId,
             parse_mode: 'HTML',
-            reply_markup,
           })
           .catch(this.handleSendMessageError)
         return

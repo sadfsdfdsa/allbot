@@ -3,7 +3,6 @@ import { message } from 'telegraf/filters';
 import { matchMentionsToUsers, getMentionsFromEntities, isChatGroup, } from './utils/utils.js';
 import { ADDED_TO_CHAT_WELCOME_TEXT, CLEAN_UP_EMPTY_MENTION_TEXT, DONATE_COMMAND_TEXT, EMPTY_DELETE_FROM_MENTION_TEXT, EMPTY_DELETE_MENTION_TEXT, HELP_COMMAND_TEXT, INTRODUCE_CUSTOM_MENTIONS_TEXT, NEW_MENTION_EXAMPLE, NOT_EXISTED_MENTION_TEXT, PRIVACY_COMMAND_TEXT, } from './constants/texts.js';
 import { LIMITS_MENTION_FOR_ADDING_PAY } from './constants/limits.js';
-// TODO make payments via Tg Wallet
 export class Bot {
     userRepository;
     metricsService;
@@ -33,7 +32,7 @@ export class Bot {
         if (botName)
             this.MENTION_COMMANDS.push(botName);
         this.bot = new Telegraf(token, {
-            handlerTimeout: 200_000,
+            handlerTimeout: 400_000,
         });
         this.bot.telegram.setMyCommands([
             {
@@ -146,7 +145,7 @@ export class Bot {
         process.once('SIGINT', () => this.bot.stop('SIGINT'));
         process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
         this.bot.catch((err) => {
-            this.handleSendMessageError(err);
+            this.handleSendMessageError(err, '[MAIN_CATCH]');
         });
         this.bot.launch();
     }
@@ -462,13 +461,13 @@ Contact us via support chat from /help`, {
         });
     }
     registerDonateCommand() {
-        this.bot.command('donate', (ctx) => {
+        this.bot.command('donate', async (ctx) => {
             const msg = this.handleDonateCommand(ctx.chat.id);
             const inlineKeyboard = [
                 [this.DONATE_URL_BUTTON],
                 [this.BUY_MENTIONS_BUTTON],
             ];
-            ctx
+            await ctx
                 .reply(msg, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
@@ -480,13 +479,13 @@ Contact us via support chat from /help`, {
         });
     }
     registerPrivacyCommand() {
-        this.bot.command('privacy', (ctx) => {
+        this.bot.command('privacy', async (ctx) => {
             console.log('[PRIVACY] Send privacy policy');
             this.metricsService.commandsCounter.inc({
                 chatId: ctx.chat.id.toString(),
                 command: 'privacy',
             });
-            ctx
+            await ctx
                 .reply(PRIVACY_COMMAND_TEXT, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
@@ -495,13 +494,13 @@ Contact us via support chat from /help`, {
         });
     }
     registerHelpCommand() {
-        this.bot.command('help', (ctx) => {
+        this.bot.command('help', async (ctx) => {
             console.log('[HELP] Send help info');
             this.metricsService.commandsCounter.inc({
                 chatId: ctx.chat.id.toString(),
                 command: 'help',
             });
-            ctx
+            await ctx
                 .reply(HELP_COMMAND_TEXT, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
@@ -535,7 +534,7 @@ Contact us via support chat from /help`, {
                 })
                     .catch(this.handleSendMessageError);
                 const startText = `🔊 All from <a href="tg://user?id=${from.id}">${from.username}</a>:`;
-                ctx
+                await ctx
                     .reply(`${startText} @${from.username}`, {
                     reply_to_message_id: messageId,
                     parse_mode: 'HTML',
@@ -574,7 +573,7 @@ Someone should write something (read more /help).
             await this.mentionPeople(ctx, usernames, {
                 includePay: false,
                 includePromo: introduceBtn,
-            });
+            }).catch(this.handleSendMessageError);
             const END_TIME = Date.now();
             const EXECUTE_TIME = END_TIME - START_TIME;
             console.log(`[ALL] Mention with pattern in group for ${usernames.length} people, TIME=${EXECUTE_TIME}, includePay=${includePay}`, chatId);
@@ -646,7 +645,7 @@ Someone should write something (read more /help).
             }
             else {
                 await Promise.all(promises.map((promise) => promise.catch(this.handleSendMessageError))).catch(this.handleSendMessageError);
-                const sendLastMsg = async () => {
+                const sendLastMsg = async (withReply = true) => {
                     return new Promise(async (resolve) => {
                         console.log('[ALL] Broken users:', brokenUsers.length);
                         let lastStr = str;
@@ -672,9 +671,14 @@ Someone should write something (read more /help).
                                 ]
                                 : [],
                         ];
+                        // await new Promise((resolve) => {
+                        //   setTimeout(() => {
+                        //     resolve(null)
+                        //   }, 10_000)
+                        // })
                         try {
                             await ctx.reply(lastStr, {
-                                reply_to_message_id: messageId,
+                                reply_to_message_id: withReply ? messageId : undefined,
                                 parse_mode: 'HTML',
                                 reply_markup: {
                                     inline_keyboard: inlineKeyboard,
@@ -688,15 +692,8 @@ Someone should write something (read more /help).
                                 response.description ===
                                     'Bad Request: message to reply not found') {
                                 console.log('[ALL] Retry because can not reply to not found msg', response);
-                                await this.bot.telegram
-                                    .sendMessage(chatId, lastStr, {
-                                    parse_mode: 'HTML',
-                                    reply_markup: {
-                                        inline_keyboard: inlineKeyboard,
-                                    },
-                                })
-                                    .catch(this.handleSendMessageError);
-                                return;
+                                await sendLastMsg(false);
+                                return resolve(null);
                             }
                             if (response?.error_code !== 429) {
                                 console.error(error);
@@ -704,7 +701,7 @@ Someone should write something (read more /help).
                             }
                             console.log('[ALL] Retry last msg', response.parameters.retry_after);
                             setTimeout(() => {
-                                sendLastMsg();
+                                sendLastMsg(withReply);
                             }, (response.parameters.retry_after + 0.2) * 1000);
                         }
                         finally {
@@ -712,7 +709,7 @@ Someone should write something (read more /help).
                         }
                     });
                 };
-                await sendLastMsg();
+                await sendLastMsg().catch(this.handleSendMessageError);
             }
         }
     }
@@ -722,8 +719,8 @@ Someone should write something (read more /help).
     handleDelete(chatId, user) {
         return this.userRepository.deleteUser(chatId, user.id);
     }
-    handleSendMessageError(error) {
-        console.error(error);
+    handleSendMessageError(error, prefix = '') {
+        console.error(prefix, error);
     }
     async sendCustomMention(ctx, field) {
         if (!ctx.chat?.id)
@@ -770,10 +767,10 @@ Someone should write something (read more /help).
         if (ctx.from) {
             fieldWithMentioner += ` from <a href="tg://user?id=${ctx.from.id}">${ctx.from.username}</a>`;
         }
-        this.mentionPeople(ctx, usernamesToMention, {
+        await this.mentionPeople(ctx, usernamesToMention, {
             includePay: usernamesToMention.length >= this.INCLUDE_PAY_LIMIT,
             includeFieldIfNoMessage: fieldWithMentioner,
-        });
+        }).catch(this.handleSendMessageError);
     }
     async getKeyboardWithCustomMentions(chatId) {
         const data = await this.mentionRepository.getGroupMentions(chatId);

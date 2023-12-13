@@ -34,8 +34,6 @@ type UniversalMessageOrActionUpdateCtx = NarrowedContext<
   Update.MessageUpdate | Update.CallbackQueryUpdate<CallbackQuery>
 >
 
-// TODO make payments via Tg Wallet
-
 export class Bot {
   private bot: Telegraf
 
@@ -75,7 +73,7 @@ export class Bot {
     if (botName) this.MENTION_COMMANDS.push(botName)
 
     this.bot = new Telegraf(token, {
-      handlerTimeout: 200_000,
+      handlerTimeout: 400_000,
     })
 
     this.bot.telegram.setMyCommands([
@@ -216,7 +214,7 @@ export class Bot {
     process.once('SIGTERM', () => this.bot.stop('SIGTERM'))
 
     this.bot.catch((err) => {
-      this.handleSendMessageError(err)
+      this.handleSendMessageError(err, '[MAIN_CATCH]')
     })
 
     this.bot.launch()
@@ -688,7 +686,7 @@ Contact us via support chat from /help`,
   }
 
   private registerDonateCommand(): void {
-    this.bot.command('donate', (ctx) => {
+    this.bot.command('donate', async (ctx) => {
       const msg = this.handleDonateCommand(ctx.chat.id)
 
       const inlineKeyboard = [
@@ -696,7 +694,7 @@ Contact us via support chat from /help`,
         [this.BUY_MENTIONS_BUTTON],
       ]
 
-      ctx
+      await ctx
         .reply(msg, {
           reply_to_message_id: ctx.message.message_id,
           parse_mode: 'HTML',
@@ -709,7 +707,7 @@ Contact us via support chat from /help`,
   }
 
   private registerPrivacyCommand(): void {
-    this.bot.command('privacy', (ctx) => {
+    this.bot.command('privacy', async (ctx) => {
       console.log('[PRIVACY] Send privacy policy')
 
       this.metricsService.commandsCounter.inc({
@@ -717,7 +715,7 @@ Contact us via support chat from /help`,
         command: 'privacy',
       })
 
-      ctx
+      await ctx
         .reply(PRIVACY_COMMAND_TEXT, {
           reply_to_message_id: ctx.message.message_id,
           parse_mode: 'HTML',
@@ -727,7 +725,7 @@ Contact us via support chat from /help`,
   }
 
   private registerHelpCommand(): void {
-    this.bot.command('help', (ctx) => {
+    this.bot.command('help', async (ctx) => {
       console.log('[HELP] Send help info')
 
       this.metricsService.commandsCounter.inc({
@@ -735,7 +733,7 @@ Contact us via support chat from /help`,
         command: 'help',
       })
 
-      ctx
+      await ctx
         .reply(HELP_COMMAND_TEXT, {
           reply_to_message_id: ctx.message.message_id,
           parse_mode: 'HTML',
@@ -786,7 +784,7 @@ Contact us via support chat from /help`,
 
         const startText = `🔊 All from <a href="tg://user?id=${from.id}">${from.username}</a>:`
 
-        ctx
+        await ctx
           .reply(`${startText} @${from.username}`, {
             reply_to_message_id: messageId,
             parse_mode: 'HTML',
@@ -842,7 +840,7 @@ Someone should write something (read more /help).
       await this.mentionPeople(ctx, usernames, {
         includePay: false,
         includePromo: introduceBtn,
-      })
+      }).catch(this.handleSendMessageError)
 
       const END_TIME = Date.now()
 
@@ -959,7 +957,7 @@ Someone should write something (read more /help).
           promises.map((promise) => promise.catch(this.handleSendMessageError))
         ).catch(this.handleSendMessageError)
 
-        const sendLastMsg = async () => {
+        const sendLastMsg = async (withReply = true): Promise<null> => {
           return new Promise(async (resolve) => {
             console.log('[ALL] Broken users:', brokenUsers.length)
             let lastStr = str
@@ -989,9 +987,15 @@ Someone should write something (read more /help).
                 : [],
             ]
 
+            // await new Promise((resolve) => {
+            //   setTimeout(() => {
+            //     resolve(null)
+            //   }, 10_000)
+            // })
+
             try {
               await ctx.reply(lastStr, {
-                reply_to_message_id: messageId,
+                reply_to_message_id: withReply ? messageId : undefined,
                 parse_mode: 'HTML',
                 reply_markup: {
                   inline_keyboard: inlineKeyboard,
@@ -1017,15 +1021,8 @@ Someone should write something (read more /help).
                   response
                 )
 
-                await this.bot.telegram
-                  .sendMessage(chatId, lastStr, {
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                      inline_keyboard: inlineKeyboard,
-                    },
-                  })
-                  .catch(this.handleSendMessageError)
-                return
+                await sendLastMsg(false)
+                return resolve(null)
               }
 
               if (response?.error_code !== 429) {
@@ -1039,7 +1036,7 @@ Someone should write something (read more /help).
               )
 
               setTimeout(() => {
-                sendLastMsg()
+                sendLastMsg(withReply)
               }, (response.parameters.retry_after + 0.2) * 1000)
             } finally {
               this.activeQuery.delete(chatId)
@@ -1047,7 +1044,7 @@ Someone should write something (read more /help).
           })
         }
 
-        await sendLastMsg()
+        await sendLastMsg().catch(this.handleSendMessageError)
       }
     }
   }
@@ -1060,8 +1057,8 @@ Someone should write something (read more /help).
     return this.userRepository.deleteUser(chatId, user.id)
   }
 
-  private handleSendMessageError(error: unknown): void {
-    console.error(error)
+  private handleSendMessageError(error: unknown, prefix = ''): void {
+    console.error(prefix, error)
   }
 
   private async sendCustomMention(
@@ -1146,10 +1143,10 @@ Someone should write something (read more /help).
       fieldWithMentioner += ` from <a href="tg://user?id=${ctx.from.id}">${ctx.from.username}</a>`
     }
 
-    this.mentionPeople(ctx, usernamesToMention, {
+    await this.mentionPeople(ctx, usernamesToMention, {
       includePay: usernamesToMention.length >= this.INCLUDE_PAY_LIMIT,
       includeFieldIfNoMessage: fieldWithMentioner,
-    })
+    }).catch(this.handleSendMessageError)
   }
 
   private async getKeyboardWithCustomMentions(

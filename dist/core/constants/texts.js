@@ -96,6 +96,10 @@ You can create up to <strong>3</strong> custom mentions, add and delete users fr
 <code>/mentions</code> - see all of your customs mentions
 
 More info in /help and our chat https://t.me/allsuperior_chat. 
-
+`;
+export const ALREADY_UNLIMITED = `
+😎 <strong>You have unlimited mentions, thank you for buying!</strong>
+`;
+export const NEED_TO_BUY_UNLIMITED = `
 😎 <strong>Need more than 3? Unlimited Forever for 5$.</strong>
 `;

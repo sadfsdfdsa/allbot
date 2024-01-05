@@ -1,16 +1,17 @@
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { matchMentionsToUsers, getMentionsFromEntities, isChatGroup, } from './utils/utils.js';
-import { ADDED_TO_CHAT_WELCOME_TEXT, CLEAN_UP_EMPTY_MENTION_TEXT, DONATE_COMMAND_TEXT, EMPTY_DELETE_FROM_MENTION_TEXT, EMPTY_DELETE_MENTION_TEXT, HELP_COMMAND_TEXT, INTRODUCE_CUSTOM_MENTIONS_TEXT, NEW_MENTION_EXAMPLE, NOT_EXISTED_MENTION_TEXT, PRIVACY_COMMAND_TEXT, } from './constants/texts.js';
+import { ADDED_TO_CHAT_WELCOME_TEXT, ALREADY_UNLIMITED, CLEAN_UP_EMPTY_MENTION_TEXT, DONATE_COMMAND_TEXT, EMPTY_DELETE_FROM_MENTION_TEXT, EMPTY_DELETE_MENTION_TEXT, HELP_COMMAND_TEXT, INTRODUCE_CUSTOM_MENTIONS_TEXT, NEED_TO_BUY_UNLIMITED, NEW_MENTION_EXAMPLE, NOT_EXISTED_MENTION_TEXT, PRIVACY_COMMAND_TEXT, } from './constants/texts.js';
 import { LIMITS_MENTION_FOR_ADDING_PAY } from './constants/limits.js';
 export class Bot {
     userRepository;
     metricsService;
     mentionRepository;
+    paymentsRepository;
     bot;
     MENTION_COMMANDS = ['@all', '/all'];
     INCLUDE_PAY_LIMIT = LIMITS_MENTION_FOR_ADDING_PAY;
-    CHRISTMAS_EMOJI = ['🎄', '❄️', '🎅', '🎁', '☃️', '🦌'];
+    EMOJI_SET = ['🎄', '❄️', '🎅', '🎁', '☃️', '🦌'];
     DONATE_LINK = 'https://www.buymeacoffee.com/karanarqq';
     BUY_LINK = 'https://www.buymeacoffee.com/karanarqq/e/190652';
     DONATE_URL_BUTTON = {
@@ -23,10 +24,11 @@ export class Bot {
     };
     isListening = false;
     activeQuery = new Set();
-    constructor(userRepository, metricsService, mentionRepository, botName, token) {
+    constructor(userRepository, metricsService, mentionRepository, paymentsRepository, botName, token) {
         this.userRepository = userRepository;
         this.metricsService = metricsService;
         this.mentionRepository = mentionRepository;
+        this.paymentsRepository = paymentsRepository;
         if (!token)
             throw new Error('No tg token set');
         if (botName)
@@ -109,11 +111,17 @@ export class Bot {
                 chatId: ctx.chat.id.toString(),
                 action: 'mention.showIntro',
             });
+            const isUnlimitedGroup = this.paymentsRepository.getHasGroupUnlimited(ctx.chat.id);
+            const text = `
+${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_TO_BUY_UNLIMITED}
+`;
             ctx
-                .reply(INTRODUCE_CUSTOM_MENTIONS_TEXT, {
+                .reply(text, {
                 parse_mode: 'HTML',
                 reply_markup: {
-                    inline_keyboard: [[this.BUY_MENTIONS_BUTTON]],
+                    inline_keyboard: [
+                        isUnlimitedGroup ? [] : [this.BUY_MENTIONS_BUTTON],
+                    ],
                 },
             })
                 .catch(this.handleSendMessageError);
@@ -138,6 +146,7 @@ export class Bot {
     async launch() {
         if (this.isListening)
             throw new Error('Bot already listening');
+        // console.log('To enable unlimited:', await this.bot.telegram.getChat('@chat'))
         this.bot.botInfo = await this.bot.telegram.getMe();
         console.log('[LAUNCH] Bot info: ', this.bot.botInfo);
         console.log('[LAUNCH] Bot starting');
@@ -463,9 +472,10 @@ Contact us via support chat from /help`, {
     registerDonateCommand() {
         this.bot.command('donate', async (ctx) => {
             const msg = this.handleDonateCommand(ctx.chat.id);
+            const hasUnlimited = this.paymentsRepository.getHasGroupUnlimited(ctx.chat.id);
             const inlineKeyboard = [
                 [this.DONATE_URL_BUTTON],
-                [this.BUY_MENTIONS_BUTTON],
+                hasUnlimited ? [] : [this.BUY_MENTIONS_BUTTON],
             ];
             await ctx
                 .reply(msg, {
@@ -571,7 +581,7 @@ Someone should write something (read more /help).
             this.activeQuery.add(chatId);
             const includePay = usernames.length >= this.INCLUDE_PAY_LIMIT; // Large group members count
             await this.mentionPeople(ctx, usernames, {
-                includePay: false,
+                includePay,
                 includePromo: introduceBtn,
             }).catch(this.handleSendMessageError);
             const END_TIME = Date.now();
@@ -600,7 +610,8 @@ Someone should write something (read more /help).
         for (let i = 0; i < usernames.length; i += chunkSize) {
             const chunk = usernames.slice(i, i + chunkSize);
             const isLastMessage = i >= usernames.length - chunkSize;
-            const emoji = this.CHRISTMAS_EMOJI[Math.floor(Math.random() * this.CHRISTMAS_EMOJI.length)] ?? '🔊';
+            const emoji = this.EMOJI_SET[Math.floor(Math.random() * this.EMOJI_SET.length)] ??
+                '🔊';
             const str = `${emoji} ${prefix}` +
                 chunk
                     .map((username) => username.startsWith('@') ? username : `@${username}`)
@@ -660,16 +671,18 @@ Someone should write something (read more /help).
                                         `\nPlease read /help for your group with size more than 100`;
                             }
                         }
+                        const buttons = [];
+                        if (options.includePay) {
+                            buttons.push(this.DONATE_URL_BUTTON);
+                        }
+                        if (options.includePromo) {
+                            buttons.push({
+                                text: options.includePromo.text,
+                                callback_data: options.includePromo.callback,
+                            });
+                        }
                         const inlineKeyboard = [
-                            options.includePay ? [this.DONATE_URL_BUTTON] : [],
-                            options.includePromo
-                                ? [
-                                    {
-                                        text: options.includePromo.text,
-                                        callback_data: options.includePromo.callback,
-                                    },
-                                ]
-                                : [],
+                            buttons,
                         ];
                         // await new Promise((resolve) => {
                         //   setTimeout(() => {

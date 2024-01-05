@@ -5,6 +5,7 @@ import { message } from 'telegraf/filters'
 import {
   CallbackQuery,
   Chat,
+  InlineKeyboardButton,
   InlineKeyboardMarkup,
   Update,
   User,
@@ -17,17 +18,20 @@ import {
 import { MentionRepository } from './mentionRepository.js'
 import {
   ADDED_TO_CHAT_WELCOME_TEXT,
+  ALREADY_UNLIMITED,
   CLEAN_UP_EMPTY_MENTION_TEXT,
   DONATE_COMMAND_TEXT,
   EMPTY_DELETE_FROM_MENTION_TEXT,
   EMPTY_DELETE_MENTION_TEXT,
   HELP_COMMAND_TEXT,
   INTRODUCE_CUSTOM_MENTIONS_TEXT,
+  NEED_TO_BUY_UNLIMITED,
   NEW_MENTION_EXAMPLE,
   NOT_EXISTED_MENTION_TEXT,
   PRIVACY_COMMAND_TEXT,
 } from './constants/texts.js'
 import { LIMITS_MENTION_FOR_ADDING_PAY } from './constants/limits.js'
+import { PaymentsRepository } from './paymentsRepository.js'
 
 type UniversalMessageOrActionUpdateCtx = NarrowedContext<
   Context,
@@ -41,7 +45,7 @@ export class Bot {
 
   private readonly INCLUDE_PAY_LIMIT = LIMITS_MENTION_FOR_ADDING_PAY
 
-  private readonly CHRISTMAS_EMOJI = ['🎄', '❄️', '🎅', '🎁', '☃️', '🦌']
+  private readonly EMOJI_SET = ['🎄', '❄️', '🎅', '🎁', '☃️', '🦌']
 
   private readonly DONATE_LINK = 'https://www.buymeacoffee.com/karanarqq'
 
@@ -65,6 +69,7 @@ export class Bot {
     private readonly userRepository: UserRepository,
     private readonly metricsService: MetricsService,
     private readonly mentionRepository: MentionRepository,
+    private readonly paymentsRepository: PaymentsRepository,
     botName: string | undefined,
     token: string | undefined
   ) {
@@ -161,11 +166,23 @@ export class Bot {
         action: 'mention.showIntro',
       })
 
+      const isUnlimitedGroup = this.paymentsRepository.getHasGroupUnlimited(
+        ctx.chat.id
+      )
+
+      const text = `
+${INTRODUCE_CUSTOM_MENTIONS_TEXT}${
+        isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_TO_BUY_UNLIMITED
+      }
+`
+
       ctx
-        .reply(INTRODUCE_CUSTOM_MENTIONS_TEXT, {
+        .reply(text, {
           parse_mode: 'HTML',
           reply_markup: {
-            inline_keyboard: [[this.BUY_MENTIONS_BUTTON]],
+            inline_keyboard: [
+              isUnlimitedGroup ? [] : [this.BUY_MENTIONS_BUTTON],
+            ],
           },
         })
         .catch(this.handleSendMessageError)
@@ -202,6 +219,8 @@ export class Bot {
 
   public async launch(): Promise<void> {
     if (this.isListening) throw new Error('Bot already listening')
+
+    // console.log('To enable unlimited:', await this.bot.telegram.getChat('@chat'))
 
     this.bot.botInfo = await this.bot.telegram.getMe()
     console.log('[LAUNCH] Bot info: ', this.bot.botInfo)
@@ -689,9 +708,13 @@ Contact us via support chat from /help`,
     this.bot.command('donate', async (ctx) => {
       const msg = this.handleDonateCommand(ctx.chat.id)
 
+      const hasUnlimited = this.paymentsRepository.getHasGroupUnlimited(
+        ctx.chat.id
+      )
+
       const inlineKeyboard = [
         [this.DONATE_URL_BUTTON],
-        [this.BUY_MENTIONS_BUTTON],
+        hasUnlimited ? [] : [this.BUY_MENTIONS_BUTTON],
       ]
 
       await ctx
@@ -838,7 +861,7 @@ Someone should write something (read more /help).
       const includePay = usernames.length >= this.INCLUDE_PAY_LIMIT // Large group members count
 
       await this.mentionPeople(ctx, usernames, {
-        includePay: false,
+        includePay,
         includePromo: introduceBtn,
       }).catch(this.handleSendMessageError)
 
@@ -894,9 +917,8 @@ Someone should write something (read more /help).
       const isLastMessage = i >= usernames.length - chunkSize
 
       const emoji =
-        this.CHRISTMAS_EMOJI[
-          Math.floor(Math.random() * this.CHRISTMAS_EMOJI.length)
-        ] ?? '🔊'
+        this.EMOJI_SET[Math.floor(Math.random() * this.EMOJI_SET.length)] ??
+        '🔊'
       const str =
         `${emoji} ${prefix}` +
         chunk
@@ -975,16 +997,21 @@ Someone should write something (read more /help).
               }
             }
 
+            const buttons: InlineKeyboardButton[] = []
+
+            if (options.includePay) {
+              buttons.push(this.DONATE_URL_BUTTON)
+            }
+
+            if (options.includePromo) {
+              buttons.push({
+                text: options.includePromo.text,
+                callback_data: options.includePromo.callback,
+              })
+            }
+
             const inlineKeyboard: InlineKeyboardMarkup['inline_keyboard'] = [
-              options.includePay ? [this.DONATE_URL_BUTTON] : [],
-              options.includePromo
-                ? [
-                    {
-                      text: options.includePromo.text,
-                      callback_data: options.includePromo.callback,
-                    },
-                  ]
-                : [],
+              buttons,
             ]
 
             // await new Promise((resolve) => {

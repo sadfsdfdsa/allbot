@@ -27,6 +27,10 @@ export class PaymentsRepository {
     )
   }
 
+  public getHasGroupUnlimited(chatId: Chat['id']): boolean {
+    return this.mentionsLimitsPerGroup[chatId.toString()] === 'unlimited'
+  }
+
   public getLimitByChatId(chatId: Chat['id']): Limit {
     return (
       this.mentionsLimitsPerGroup[chatId.toString()] ?? this.LIMIT_FOR_GROUP

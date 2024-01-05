@@ -13,6 +13,9 @@ export class PaymentsRepository {
         });
         console.log('[LAUNCH] Init payments repository', this.mentionsLimitsPerGroup);
     }
+    getHasGroupUnlimited(chatId) {
+        return this.mentionsLimitsPerGroup[chatId.toString()] === 'unlimited';
+    }
     getLimitByChatId(chatId) {
         return (this.mentionsLimitsPerGroup[chatId.toString()] ?? this.LIMIT_FOR_GROUP);
     }

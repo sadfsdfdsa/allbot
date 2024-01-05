@@ -31,6 +31,7 @@ const main = async (): Promise<void> => {
     userRepository,
     metricsService,
     mentionRepository,
+    paymentsRepository,
     process.env.BOT_NAME,
     process.env.TG_TOKEN
   )

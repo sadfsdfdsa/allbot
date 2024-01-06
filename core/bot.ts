@@ -1338,6 +1338,8 @@ Someone should write something (read more /help).
       'creator', // disable while debug
     ]
 
+    console.log(`[is_allowed] Check ${member.status} for user ${userId}`)
+
     return allowed.includes(member.status)
   }
 }

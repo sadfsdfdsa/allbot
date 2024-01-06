@@ -37,10 +37,6 @@ Telegram has a limit on mentions - only 5 users receive notifications per messag
 <b>❔ Why doesn't the bot mention me?</b>
 Bot can only mention you after your first text message after the bot joins the group.
 
-<b>❔ Why Bot add /donate to message?</b>
-You can use bot for Free, but servers are paid, so you can also support project.
-Bot adds /donate only for big groups - more than 10 people.
-
 <b>❔ How mentions work for members in large (100+) groups?</b>
 Telegram restrict messaging for Bots. So we can send only 20 messages at one time per group.
 Also Telegram send Push only first 5 mentions in a message. So we must split all your group members by 5 and can send only 20 messages.
@@ -54,6 +50,7 @@ You should Promote it and permit "Manage Topics", or use Bot not in "Closed" Top
 Try to add more than 3 mentions, click to button for pay link, then pay with fill your group name or contact us in chat https://t.me/allsuperior_chat.
 
 <strong>👀 Commands:</strong>
+/settings - change settings to enable/disable mentions for users without administrator rights ⚙️
 /donate - help the project pay for servers 🫰
 /privacy - info about personal data usage and codebase of the Bot 🔐
 
@@ -102,4 +99,10 @@ export const ALREADY_UNLIMITED = `
 `;
 export const NEED_TO_BUY_UNLIMITED = `
 😎 <strong>Need more than 3? Unlimited Forever for 5$.</strong>
+`;
+export const SETTINGS_TEXT = `⚙️ <strong>Settings (can be edited only by group admins):</strong>`;
+export const ONLY_ADMIN_SETTINGS_TEXT = '🛑 Only admins';
+export const ALL_MEMBERS_SETTINGS_TEXT = '✅ All members';
+export const ONLY_ADMIN_ACTION_TEXT = `
+<strong>🛑 Action can be performed only by admins</strong> (/settings for changing)
 `;

@@ -1,13 +1,14 @@
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { matchMentionsToUsers, getMentionsFromEntities, isChatGroup, } from './utils/utils.js';
-import { ADDED_TO_CHAT_WELCOME_TEXT, ALREADY_UNLIMITED, CLEAN_UP_EMPTY_MENTION_TEXT, DONATE_COMMAND_TEXT, EMPTY_DELETE_FROM_MENTION_TEXT, EMPTY_DELETE_MENTION_TEXT, HELP_COMMAND_TEXT, INTRODUCE_CUSTOM_MENTIONS_TEXT, NEED_TO_BUY_UNLIMITED, NEW_MENTION_EXAMPLE, NOT_EXISTED_MENTION_TEXT, PRIVACY_COMMAND_TEXT, } from './constants/texts.js';
+import { matchMentionsToUsers, getMentionsFromEntities, isChatGroup, createSettingsKeyboard, } from './utils/utils.js';
+import { ADDED_TO_CHAT_WELCOME_TEXT, ALREADY_UNLIMITED, CLEAN_UP_EMPTY_MENTION_TEXT, DONATE_COMMAND_TEXT, EMPTY_DELETE_FROM_MENTION_TEXT, EMPTY_DELETE_MENTION_TEXT, HELP_COMMAND_TEXT, INTRODUCE_CUSTOM_MENTIONS_TEXT, NEED_TO_BUY_UNLIMITED, NEW_MENTION_EXAMPLE, NOT_EXISTED_MENTION_TEXT, ONLY_ADMIN_ACTION_TEXT, PRIVACY_COMMAND_TEXT, SETTINGS_TEXT, } from './constants/texts.js';
 import { LIMITS_MENTION_FOR_ADDING_PAY } from './constants/limits.js';
 export class Bot {
     userRepository;
     metricsService;
     mentionRepository;
     paymentsRepository;
+    settingsRepository;
     bot;
     MENTION_COMMANDS = ['@all', '/all'];
     INCLUDE_PAY_LIMIT = LIMITS_MENTION_FOR_ADDING_PAY;
@@ -24,11 +25,12 @@ export class Bot {
     };
     isListening = false;
     activeQuery = new Set();
-    constructor(userRepository, metricsService, mentionRepository, paymentsRepository, botName, token) {
+    constructor(userRepository, metricsService, mentionRepository, paymentsRepository, settingsRepository, botName, token) {
         this.userRepository = userRepository;
         this.metricsService = metricsService;
         this.mentionRepository = mentionRepository;
         this.paymentsRepository = paymentsRepository;
+        this.settingsRepository = settingsRepository;
         if (!token)
             throw new Error('No tg token set');
         if (botName)
@@ -62,6 +64,10 @@ export class Bot {
                 description: '/delete_mention some_group',
             },
             {
+                command: 'settings',
+                description: 'Bot settings',
+            },
+            {
                 command: 'help',
                 description: 'Help information',
             },
@@ -69,16 +75,12 @@ export class Bot {
                 command: 'donate',
                 description: 'Support the project to pay for servers and new features',
             },
-            // Disable for smallest commands line
-            // {
-            //   command: 'privacy',
-            //   description: 'How the Bot takes care of your personal data',
-            // },
-            // TODO rename mention?
         ]);
         this.registerDonateCommand();
         this.registerPrivacyCommand();
         this.registerHelpCommand();
+        this.registerSettingsChangeAction();
+        this.registerSettingsCommand();
         this.registerMentionCommand();
         this.registerGetAllMentionCommand();
         this.registerAddToMentionCommand();
@@ -182,6 +184,52 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
         });
         this.metricsService.updateLatestPaymentsCall(`${chatId}`);
         return DONATE_COMMAND_TEXT;
+    }
+    registerSettingsChangeAction() {
+        this.bot.action(/^[/settings]+(_.+)?$/, async (ctx) => {
+            if (!ctx.chat?.id)
+                return;
+            const isAllowed = await this.getIsAllowed(ctx.chat.id, ctx.update.callback_query.from.id);
+            if (!isAllowed) {
+                this.metricsService.restrictedAction.inc({
+                    chatId: ctx.chat.id,
+                    action: 'settingsChanged',
+                });
+                await ctx.reply(`<strong>🛑 Only admins can edit settings</strong>`, {
+                    parse_mode: 'HTML',
+                });
+                return;
+            }
+            const data = ctx.update.callback_query.data;
+            const [, jsonData] = data.split('_');
+            const { s, ...rest } = JSON.parse(jsonData);
+            const newValue = !rest[s];
+            const changedSettings = {
+                ...rest,
+                [s]: newValue,
+            };
+            await this.settingsRepository.updateSettings(ctx.chat.id, s, newValue);
+            const keyboard = createSettingsKeyboard(changedSettings);
+            await ctx.editMessageReplyMarkup({
+                inline_keyboard: keyboard,
+            });
+        });
+    }
+    registerSettingsCommand() {
+        this.bot.command('settings', async (ctx) => {
+            const settings = await this.settingsRepository.getSettingsCompressed(ctx.chat.id);
+            const keyboard = createSettingsKeyboard(settings);
+            this.metricsService.commandsCounter.inc({
+                chatId: ctx.chat.id.toString(),
+                command: 'settings',
+            });
+            ctx.reply(SETTINGS_TEXT, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: keyboard,
+                },
+            });
+        });
     }
     registerMentionCommand() {
         this.bot.command('mention', async (ctx) => {
@@ -299,6 +347,9 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
                     .catch(this.handleSendMessageError);
                 return;
             }
+            const isAllowed = await this.onlyAdminActionGuard(ctx, 'crudCustomMention');
+            if (!isAllowed)
+                return;
             const mentions = getMentionsFromEntities(ctx.message.text, ctx.message.entities);
             const reversedUsers = await this.userRepository.getUsersIdsByUsernamesInChat(ctx.message.chat.id);
             const { successIds, successMentions, missedMentions } = matchMentionsToUsers(mentions, reversedUsers);
@@ -376,6 +427,9 @@ Need more? Try removing useless mentions using the /mentions and /delete_mention
                     .catch(this.handleSendMessageError);
                 return;
             }
+            const isAllowed = await this.onlyAdminActionGuard(ctx, 'crudCustomMention');
+            if (!isAllowed)
+                return;
             const mentions = getMentionsFromEntities(ctx.message.text, ctx.message.entities);
             const reversedUsers = await this.userRepository.getUsersIdsByUsernamesInChat(ctx.message.chat.id);
             const result = matchMentionsToUsers(mentions, reversedUsers);
@@ -443,6 +497,9 @@ Contact us via support chat from /help`, {
                     .catch(this.handleSendMessageError);
                 return;
             }
+            const isAllowed = await this.onlyAdminActionGuard(ctx, 'crudCustomMention');
+            if (!isAllowed)
+                return;
             const wasDeleted = await this.mentionRepository.deleteMention(ctx.message.chat.id, field);
             if (wasDeleted) {
                 console.log('[delete_mention] Deleted mention', ctx.message.chat.id, field);
@@ -556,11 +613,11 @@ Contact us via support chat from /help`, {
             const isCallAll = this.MENTION_COMMANDS.some((command) => text.includes(command));
             if (!isCallAll)
                 return;
+            const isAllowed = await this.onlyAdminActionGuard(ctx, 'useAllMention');
+            if (!isAllowed)
+                return;
             const chatUsernames = await this.userRepository.getUsernamesByChatId(chatId);
             const usernames = Object.values(chatUsernames).filter((username) => username !== from.username);
-            // const usernames = new Array<string>(255)
-            //   .fill('item')
-            //   .map((_, index) => `test${index}`)
             if (!usernames.length) {
                 console.log('[ALL] Noone to mention', ctx.message.chat.id);
                 await ctx.reply(`🙈 It seems there is no one else here.
@@ -684,11 +741,6 @@ Someone should write something (read more /help).
                         const inlineKeyboard = [
                             buttons,
                         ];
-                        // await new Promise((resolve) => {
-                        //   setTimeout(() => {
-                        //     resolve(null)
-                        //   }, 10_000)
-                        // })
                         try {
                             await ctx.reply(lastStr, {
                                 reply_to_message_id: withReply ? messageId : undefined,
@@ -738,6 +790,9 @@ Someone should write something (read more /help).
     async sendCustomMention(ctx, field) {
         if (!ctx.chat?.id)
             return;
+        const isAllowed = await this.onlyAdminActionGuard(ctx, 'useCustomMention');
+        if (!isAllowed)
+            return;
         const ids = await this.mentionRepository.getUsersIdsByMention(ctx.chat.id, field);
         const users = await this.userRepository.getUsersUsernamesByIdInChat(ctx.chat.id);
         const idsToDelete = [];
@@ -785,6 +840,24 @@ Someone should write something (read more /help).
             includeFieldIfNoMessage: fieldWithMentioner,
         }).catch(this.handleSendMessageError);
     }
+    async onlyAdminActionGuard(ctx, action) {
+        if (!ctx.chat?.id)
+            return true;
+        const settings = await this.settingsRepository.getSettings(ctx.chat?.id);
+        const isActionOnlyForAdmin = settings[action];
+        const isAllowed = !isActionOnlyForAdmin ||
+            (await this.getIsAllowed(ctx.chat?.id, ctx.from?.id));
+        if (isAllowed)
+            return true;
+        this.metricsService.restrictedAction.inc({
+            chatId: ctx.chat.id,
+            action,
+        });
+        await ctx.reply(ONLY_ADMIN_ACTION_TEXT, {
+            parse_mode: 'HTML',
+        });
+        return false;
+    }
     async getKeyboardWithCustomMentions(chatId) {
         const data = await this.mentionRepository.getGroupMentions(chatId);
         const entries = Object.entries(data);
@@ -803,5 +876,15 @@ Someone should write something (read more /help).
             ]);
         });
         return keyboard;
+    }
+    async getIsAllowed(chatId, userId) {
+        if (!userId)
+            return true;
+        const member = await this.bot.telegram.getChatMember(chatId, userId);
+        const allowed = [
+            'administrator',
+            'creator', // disable while debug
+        ];
+        return allowed.includes(member.status);
     }
 }

@@ -1,9 +1,9 @@
 import { mock, mockDeep } from 'jest-mock-extended'
 import type { RedisClientType } from 'redis'
-import { UserRepository } from './repository.js'
 import { User } from 'telegraf/types'
 import { CacheService } from './cache.js'
 import { MetricsService } from './metrics.js'
+import { UserRepository } from './userRepository.js'
 
 describe('repository', () => {
   let dbMock = mock<RedisClientType<any, any, any>>()

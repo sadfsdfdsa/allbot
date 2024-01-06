@@ -15,6 +15,8 @@ export class MetricsService {
     replyUsersTimeHistogram;
     customMentionsCounter;
     customMentionsActionCounter;
+    settingsCounter;
+    restrictedAction;
     constructor(db, measureDefaultMetrics = false) {
         this.db = db;
         console.log('[LAUNCH] Metrics service started');
@@ -75,10 +77,22 @@ export class MetricsService {
         this.registry.registerMetric(this.customMentionsCounter);
         this.customMentionsActionCounter = new Counter({
             name: 'allbot_custom_mentions_action',
-            help: 'The number of calls of database calls',
+            help: 'The number of calls of mentions actions calls',
             labelNames: ['action', 'chatId'],
         });
         this.registry.registerMetric(this.customMentionsActionCounter);
+        this.settingsCounter = new Counter({
+            name: 'allbot_settings',
+            help: 'The number of settings options enable/disable',
+            labelNames: ['action', 'chatId'],
+        });
+        this.registry.registerMetric(this.settingsCounter);
+        this.restrictedAction = new Counter({
+            name: 'allbot_restricted_action',
+            help: 'The number of sending `only admin` text by action',
+            labelNames: ['action', 'chatId'],
+        });
+        this.registry.registerMetric(this.restrictedAction);
         if (!measureDefaultMetrics)
             return;
         collectDefaultMetrics({

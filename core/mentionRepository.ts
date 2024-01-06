@@ -21,7 +21,7 @@ export class MentionRepository {
     const isExists = await this.db.hExists(key, mention)
 
     this.metrics.dbOpsCounter.inc({
-      action: 'checkIfMentionExists#hLen',
+      action: 'checkIfMentionExists#hExists',
     })
 
     return isExists

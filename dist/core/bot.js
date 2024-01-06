@@ -195,6 +195,7 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
                     chatId: ctx.chat.id,
                     action: 'settingsChanged',
                 });
+                console.log(`[settings] Not edited because not ${ctx.update.callback_query.from.username} admin in ${ctx.chat.id}`);
                 await ctx.reply(`<strong>🛑 Only admins can edit settings</strong>`, {
                     parse_mode: 'HTML',
                 });
@@ -210,6 +211,7 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
             };
             await this.settingsRepository.updateSettings(ctx.chat.id, s, newValue);
             const keyboard = createSettingsKeyboard(changedSettings);
+            console.log(`[settings] Edited ${s} with ${newValue} in ${ctx.chat.id}`);
             await ctx.editMessageReplyMarkup({
                 inline_keyboard: keyboard,
             });
@@ -223,6 +225,7 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
                 chatId: ctx.chat.id.toString(),
                 command: 'settings',
             });
+            console.log('[settings] Send settings info');
             ctx.reply(SETTINGS_TEXT, {
                 parse_mode: 'HTML',
                 reply_markup: {
@@ -847,6 +850,7 @@ Someone should write something (read more /help).
         const isActionOnlyForAdmin = settings[action];
         const isAllowed = !isActionOnlyForAdmin ||
             (await this.getIsAllowed(ctx.chat?.id, ctx.from?.id));
+        console.log(`[admin_guard] Check ${isAllowed} for admin ${ctx.chat.id} ${ctx.from?.id} ${ctx.from?.username}`);
         if (isAllowed)
             return true;
         this.metricsService.restrictedAction.inc({

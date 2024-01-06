@@ -1285,7 +1285,7 @@ Someone should write something (read more /help).
       (await this.getIsAllowed(ctx.chat?.id, ctx.from?.id))
 
     console.log(
-      `[admin_guard] Check ${isAllowed} for admin ${ctx.chat.id} ${ctx.from?.id} ${ctx.from?.username}`
+      `[admin_guard] Check ${isAllowed} for ${action} admin ${ctx.chat.id} ${ctx.from?.id}`
     )
 
     if (isAllowed) return true

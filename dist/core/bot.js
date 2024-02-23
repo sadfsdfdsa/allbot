@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { matchMentionsToUsers, getMentionsFromEntities, isChatGroup, createSettingsKeyboard, } from './utils/utils.js';
-import { ADDED_TO_CHAT_WELCOME_TEXT, ALREADY_UNLIMITED, CLEAN_UP_EMPTY_MENTION_TEXT, DONATE_COMMAND_TEXT, EMPTY_DELETE_FROM_MENTION_TEXT, EMPTY_DELETE_MENTION_TEXT, HELP_COMMAND_TEXT, INTRODUCE_CUSTOM_MENTIONS_TEXT, NEED_TO_BUY_UNLIMITED, NEW_MENTION_EXAMPLE, NOT_EXISTED_MENTION_TEXT, ONLY_ADMIN_ACTION_TEXT, PRIVACY_COMMAND_TEXT, SETTINGS_TEXT, } from './constants/texts.js';
+import { ADDED_TO_CHAT_WELCOME_TEXT, ALREADY_UNLIMITED, CLEAN_UP_EMPTY_MENTION_TEXT, DONATE_COMMAND_TEXT, EMPTY_DELETE_FROM_MENTION_TEXT, EMPTY_DELETE_MENTION_TEXT, GET_MENTIONS_TEXT, HELP_COMMAND_TEXT, INTRODUCE_CUSTOM_MENTIONS_TEXT, NEED_TO_BUY_UNLIMITED, NEW_MENTION_EXAMPLE, NOT_EXISTED_MENTION_TEXT, ONLY_ADMIN_ACTION_TEXT, PRIVACY_COMMAND_TEXT, SETTINGS_TEXT, } from './constants/texts.js';
 import { LIMITS_MENTION_FOR_ADDING_PAY } from './constants/limits.js';
 export class Bot {
     userRepository;
@@ -261,7 +261,7 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
                     return;
                 }
                 await ctx
-                    .reply(`🫂 Custom mentions in the group:`, {
+                    .reply(GET_MENTIONS_TEXT, {
                     parse_mode: 'HTML',
                     reply_markup: keyboard,
                 })
@@ -323,7 +323,7 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
                 action: 'mentions.getAll',
             });
             await ctx
-                .reply(`🫂 Custom mentions in the group:`, {
+                .reply(GET_MENTIONS_TEXT, {
                 parse_mode: 'HTML',
                 reply_markup: keyboard,
             })
@@ -585,7 +585,7 @@ Contact us via support chat from /help`, {
             const { message: { from, text, message_id: messageId }, chat: { id: chatId }, } = ctx;
             const introduceBtn = {
                 callback: '/intro_custom_mentions',
-                text: '💥 Introduce custom mentions!',
+                text: '💥 Introduce @custom_mentions!',
             };
             const reply_markup = {
                 inline_keyboard: [
@@ -601,7 +601,7 @@ Contact us via support chat from /help`, {
             if (!isChatGroup(chatId)) {
                 console.log(`[DIRECT_MSG] Direct message from ${ctx.message.text}`, from.username);
                 await ctx
-                    .reply(`👥 Add me to your group, here is example @all mention for you (but also you can use custom mentions with me!):`, {
+                    .reply(`👥 Add me to your group, here is example @all mention for you (but also you can use @custom_mentions with me!):`, {
                     parse_mode: 'HTML',
                 })
                     .catch(this.handleSendMessageError);
@@ -738,11 +738,6 @@ Someone should write something (read more /help).
                                 lastStr +
                                     ', ' +
                                     brokenUsers.map((username) => `@${username}`).join(', ');
-                            if (usernames.length > 100) {
-                                lastStr =
-                                    lastStr +
-                                        `\nPlease read /help for your group with size more than 100`;
-                            }
                         }
                         const buttons = [];
                         if (options.includePay) {

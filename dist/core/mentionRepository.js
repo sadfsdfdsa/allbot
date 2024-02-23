@@ -10,10 +10,12 @@ export class MentionRepository {
         console.log('[LAUNCH] Init Mention repository');
     }
     async loadMentionsForInstantMentions() {
-        const unlimitedChatIds = this.paymentsRepository.getGroupsWithUnlimited();
-        const promises = unlimitedChatIds.map(async (chatId) => {
-            const mentions = await this.getGroupMentions(chatId);
-            this.mentionsByChatId[chatId] = new Set(Object.keys(mentions));
+        const groupsWithMentions = await this.db.keys('*.mentions');
+        const promises = groupsWithMentions.map(async (chatIdWithMentions) => {
+            const [chatId] = chatIdWithMentions.split('.');
+            const chatIdNumber = Number(chatId);
+            const mentions = await this.getGroupMentions(chatIdNumber);
+            this.mentionsByChatId[chatIdNumber] = new Set(Object.keys(mentions));
         });
         await Promise.all(promises);
         console.log('[LAUNCH] Mentions loaded for chats', Object.keys(this.mentionsByChatId));

@@ -25,6 +25,7 @@ import {
   DONATE_COMMAND_TEXT,
   EMPTY_DELETE_FROM_MENTION_TEXT,
   EMPTY_DELETE_MENTION_TEXT,
+  GET_MENTIONS_TEXT,
   HELP_COMMAND_TEXT,
   INTRODUCE_CUSTOM_MENTIONS_TEXT,
   NEED_TO_BUY_UNLIMITED,
@@ -391,7 +392,7 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${
         }
 
         await ctx
-          .reply(`🫂 Custom mentions in the group:`, {
+          .reply(GET_MENTIONS_TEXT, {
             parse_mode: 'HTML',
             reply_markup: keyboard,
           })
@@ -478,7 +479,7 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${
       })
 
       await ctx
-        .reply(`🫂 Custom mentions in the group:`, {
+        .reply(GET_MENTIONS_TEXT, {
           parse_mode: 'HTML',
           reply_markup: keyboard,
         })
@@ -873,7 +874,7 @@ Contact us via support chat from /help`,
 
       const introduceBtn = {
         callback: '/intro_custom_mentions',
-        text: '💥 Introduce custom mentions!',
+        text: '💥 Introduce @custom_mentions!',
       }
 
       const reply_markup = {
@@ -897,7 +898,7 @@ Contact us via support chat from /help`,
 
         await ctx
           .reply(
-            `👥 Add me to your group, here is example @all mention for you (but also you can use custom mentions with me!):`,
+            `👥 Add me to your group, here is example @all mention for you (but also you can use @custom_mentions with me!):`,
             {
               parse_mode: 'HTML',
             }
@@ -1103,12 +1104,6 @@ Someone should write something (read more /help).
                 lastStr +
                 ', ' +
                 brokenUsers.map((username) => `@${username}`).join(', ')
-
-              if (usernames.length > 100) {
-                lastStr =
-                  lastStr +
-                  `\nPlease read /help for your group with size more than 100`
-              }
             }
 
             const buttons: InlineKeyboardButton[] = []

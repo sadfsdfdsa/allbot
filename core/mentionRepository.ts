@@ -31,6 +31,8 @@ export class MentionRepository {
   }
 
   public getMentionForMsg(chatId: Chat['id'], msg: string): string | undefined {
+    if (!this.mentionsByChatId[chatId]) return undefined
+
     const mentions = [...this.mentionsByChatId[chatId]]
 
     return mentions.find((item) => msg.includes(`@${item}`))

@@ -19,6 +19,8 @@ export class MentionRepository {
         console.log('[LAUNCH] Mentions loaded for chats', Object.keys(this.mentionsByChatId));
     }
     getMentionForMsg(chatId, msg) {
+        if (!this.mentionsByChatId[chatId])
+            return undefined;
         const mentions = [...this.mentionsByChatId[chatId]];
         return mentions.find((item) => msg.includes(`@${item}`));
     }

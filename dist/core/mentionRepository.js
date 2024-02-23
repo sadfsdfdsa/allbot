@@ -53,7 +53,7 @@ export class MentionRepository {
         this.metrics.dbOpsCounter.inc({
             action: 'addUsersToMention#hSet',
         });
-        this.mentionsByChatId[chatId].add(mention);
+        this.mentionsByChatId[chatId]?.add(mention);
         return true;
     }
     /**
@@ -79,7 +79,7 @@ export class MentionRepository {
         this.metrics.dbOpsCounter.inc({
             action: 'deleteMention',
         });
-        this.mentionsByChatId[chatId].delete(mention);
+        this.mentionsByChatId[chatId]?.delete(mention);
         if (!deleted)
             return false;
         return true;

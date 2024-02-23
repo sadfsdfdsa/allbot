@@ -86,7 +86,7 @@ export class MentionRepository {
       action: 'addUsersToMention#hSet',
     })
 
-    this.mentionsByChatId[chatId].add(mention)
+    this.mentionsByChatId[chatId]?.add(mention)
 
     return true
   }
@@ -132,7 +132,7 @@ export class MentionRepository {
       action: 'deleteMention',
     })
 
-    this.mentionsByChatId[chatId].delete(mention)
+    this.mentionsByChatId[chatId]?.delete(mention)
 
     if (!deleted) return false
 

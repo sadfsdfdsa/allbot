@@ -29,6 +29,7 @@ const main = async (): Promise<void> => {
     metricsService,
     paymentsRepository
   )
+  await mentionRepository.loadMentionsForInstantMentions()
 
   const bot = new Bot(
     userRepository,

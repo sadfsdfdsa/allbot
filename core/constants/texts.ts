@@ -55,6 +55,9 @@ Please contact us in chat if you need that functionality.
 <b>❔ Why Bot does not work inside Topics group?</b>
 You should Promote it and permit "Manage Topics", or use Bot not in "Closed" Topic.
 
+<b>❔ How to use custom mentions inside text?</b>
+You should buy unlimited version and add '@' chat before custom mention. For example \`Hello @team\`.
+
 <b>❔ How to buy unlimited custom mentions?</b>
 Try to add more than 3 mentions, click to button for pay link, then pay with fill your group name or contact us in chat https://t.me/allsuperior_chat.
 
@@ -97,6 +100,7 @@ export const INTRODUCE_CUSTOM_MENTIONS_TEXT = `
 
 You can create up to <strong>3</strong> custom mentions, add and delete users from them (click to example for copying):
 
+<code>Your message @TEAM_1</code> - [unlimited only] instant tag without any commands inside the text
 <code>/mention TEAM_1</code> - mention part of your group
 <code>/add_to TEAM_1 @user @user2</code> - add members to custom mention
 <code>/delete_from TEAM_1 @user @user2</code> - delete members from custom mention

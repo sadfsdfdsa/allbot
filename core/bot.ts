@@ -50,7 +50,7 @@ export class Bot {
 
   private readonly INCLUDE_PAY_LIMIT = LIMITS_MENTION_FOR_ADDING_PAY
 
-  private readonly EMOJI_SET = ['🎄', '❄️', '🎅', '🎁', '☃️', '🦌']
+  private readonly EMOJI_SET = ['👋', '🫰']
 
   private readonly DONATE_LINK = 'https://www.buymeacoffee.com/karanarqq'
 
@@ -917,6 +917,19 @@ Contact us via support chat from /help`,
 
       await this.userRepository.addUsers(chatId, [from])
 
+      const customMention = this.mentionRepository.getMentionForMsg(
+        chatId,
+        text
+      )
+      if (customMention) {
+        this.metricsService.customMentionsCounter.inc({
+          chatId: ctx.chat.id.toString(),
+          source: 'messageHandler',
+        })
+        await this.sendCustomMention(ctx, customMention)
+        return
+      }
+
       const isCallAll = this.MENTION_COMMANDS.some((command) =>
         text.includes(command)
       )
@@ -1254,6 +1267,7 @@ Someone should write something (read more /help).
 
     this.metricsService.customMentionsCounter.inc({
       chatId: ctx.chat.id.toString(),
+      source: 'other',
     })
 
     console.log(

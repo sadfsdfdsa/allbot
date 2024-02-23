@@ -12,7 +12,7 @@ export class Bot {
     bot;
     MENTION_COMMANDS = ['@all', '/all'];
     INCLUDE_PAY_LIMIT = LIMITS_MENTION_FOR_ADDING_PAY;
-    EMOJI_SET = ['🎄', '❄️', '🎅', '🎁', '☃️', '🦌'];
+    EMOJI_SET = ['👋', '🫰'];
     DONATE_LINK = 'https://www.buymeacoffee.com/karanarqq';
     BUY_LINK = 'https://www.buymeacoffee.com/karanarqq/e/190652';
     DONATE_URL_BUTTON = {
@@ -615,6 +615,15 @@ Contact us via support chat from /help`, {
                 return;
             }
             await this.userRepository.addUsers(chatId, [from]);
+            const customMention = this.mentionRepository.getMentionForMsg(chatId, text);
+            if (customMention) {
+                this.metricsService.customMentionsCounter.inc({
+                    chatId: ctx.chat.id.toString(),
+                    source: 'messageHandler',
+                });
+                await this.sendCustomMention(ctx, customMention);
+                return;
+            }
             const isCallAll = this.MENTION_COMMANDS.some((command) => text.includes(command));
             if (!isCallAll)
                 return;
@@ -836,6 +845,7 @@ Someone should write something (read more /help).
         }
         this.metricsService.customMentionsCounter.inc({
             chatId: ctx.chat.id.toString(),
+            source: 'other',
         });
         console.log('[mention] Mention', ctx.chat.id, field, usernamesToMention.length);
         let fieldWithMentioner = `${field}`;

@@ -4,12 +4,36 @@ import { Chat } from 'telegraf/types'
 import { PaymentsRepository } from './paymentsRepository.js'
 
 export class MentionRepository {
+  private readonly mentionsByChatId: Record<Chat['id'], Set<string>> = {}
+
   constructor(
     private readonly db: RedisClientType<any, any, any>,
     private readonly metrics: MetricsService,
     private readonly paymentsRepository: PaymentsRepository
   ) {
     console.log('[LAUNCH] Init Mention repository')
+  }
+
+  public async loadMentionsForInstantMentions(): Promise<void> {
+    const unlimitedChatIds = this.paymentsRepository.getGroupsWithUnlimited()
+
+    const promises = unlimitedChatIds.map(async (chatId) => {
+      const mentions = await this.getGroupMentions(chatId)
+      this.mentionsByChatId[chatId] = new Set(Object.keys(mentions))
+    })
+
+    await Promise.all(promises)
+
+    console.log(
+      '[LAUNCH] Mentions loaded for chats',
+      Object.keys(this.mentionsByChatId)
+    )
+  }
+
+  public getMentionForMsg(chatId: Chat['id'], msg: string): string | undefined {
+    const mentions = [...this.mentionsByChatId[chatId]]
+
+    return mentions.find((item) => msg.includes(`@${item}`))
   }
 
   public async checkIfMentionExists(
@@ -60,6 +84,8 @@ export class MentionRepository {
       action: 'addUsersToMention#hSet',
     })
 
+    this.mentionsByChatId[chatId].add(mention)
+
     return true
   }
 
@@ -103,6 +129,8 @@ export class MentionRepository {
     this.metrics.dbOpsCounter.inc({
       action: 'deleteMention',
     })
+
+    this.mentionsByChatId[chatId].delete(mention)
 
     if (!deleted) return false
 

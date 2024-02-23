@@ -104,7 +104,7 @@ export class MetricsService {
     this.customMentionsCounter = new Counter({
       name: 'allbot_custom_mentions',
       help: 'The number of calls of custom mention',
-      labelNames: ['chatId'],
+      labelNames: ['chatId', 'source'],
     })
     this.registry.registerMetric(this.customMentionsCounter)
 

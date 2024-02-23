@@ -17,6 +17,7 @@ const main = async () => {
     const settingsRepository = new SettingsRepository(dbClient, metricsService);
     const userRepository = new UserRepository(dbClient, metricsService, cache);
     const mentionRepository = new MentionRepository(dbClient, metricsService, paymentsRepository);
+    await mentionRepository.loadMentionsForInstantMentions();
     const bot = new Bot(userRepository, metricsService, mentionRepository, paymentsRepository, settingsRepository, process.env.BOT_NAME, process.env.TG_TOKEN);
     bot.launch();
     server.listen();

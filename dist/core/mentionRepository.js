@@ -2,11 +2,25 @@ export class MentionRepository {
     db;
     metrics;
     paymentsRepository;
+    mentionsByChatId = {};
     constructor(db, metrics, paymentsRepository) {
         this.db = db;
         this.metrics = metrics;
         this.paymentsRepository = paymentsRepository;
         console.log('[LAUNCH] Init Mention repository');
+    }
+    async loadMentionsForInstantMentions() {
+        const unlimitedChatIds = this.paymentsRepository.getGroupsWithUnlimited();
+        const promises = unlimitedChatIds.map(async (chatId) => {
+            const mentions = await this.getGroupMentions(chatId);
+            this.mentionsByChatId[chatId] = new Set(Object.keys(mentions));
+        });
+        await Promise.all(promises);
+        console.log('[LAUNCH] Mentions loaded for chats', Object.keys(this.mentionsByChatId));
+    }
+    getMentionForMsg(chatId, msg) {
+        const mentions = [...this.mentionsByChatId[chatId]];
+        return mentions.find((item) => msg.includes(`@${item}`));
     }
     async checkIfMentionExists(chatId, mention) {
         const key = this.getKeyForMention(chatId);
@@ -37,6 +51,7 @@ export class MentionRepository {
         this.metrics.dbOpsCounter.inc({
             action: 'addUsersToMention#hSet',
         });
+        this.mentionsByChatId[chatId].add(mention);
         return true;
     }
     /**
@@ -62,6 +77,7 @@ export class MentionRepository {
         this.metrics.dbOpsCounter.inc({
             action: 'deleteMention',
         });
+        this.mentionsByChatId[chatId].delete(mention);
         if (!deleted)
             return false;
         return true;

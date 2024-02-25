@@ -19,6 +19,10 @@ export class Bot {
         url: this.DONATE_LINK,
         text: '☕️ Buy me a coffee',
     };
+    EXAMPLES_BUTTON = {
+        callback_data: '/examples',
+        text: '🤔 Show examples',
+    };
     BUY_MENTIONS_BUTTON = {
         url: this.BUY_LINK,
         text: '🔥 Buy Unlimited mentions',
@@ -45,11 +49,7 @@ export class Bot {
             },
             {
                 command: 'mention',
-                description: '/mention some_group with additional text',
-            },
-            {
-                command: 'mentions',
-                description: 'See info about all your custom mentions',
+                description: '/mention some_group with additional text or see info about custom mentions in the group',
             },
             {
                 command: 'add_to',
@@ -98,6 +98,11 @@ export class Bot {
             })
                 .catch(this.handleSendMessageError);
         });
+        this.bot.action('/examples', async (ctx) => {
+            if (!ctx.chat?.id)
+                return;
+            await this.sendExamples(ctx);
+        });
         this.bot.action(/^[/mention]+(-.+)?$/, (ctx) => {
             if (!ctx.chat?.id)
                 return;
@@ -132,13 +137,17 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
             const { chat, message } = ctx;
             this.handleAddMembers(chat.id, message.new_chat_members);
             const isNewGroup = this.tryDetectBotAddOrDelete(chat.id, message.new_chat_members, 'add');
-            if (!isNewGroup)
-                return;
             await ctx
                 .reply(ADDED_TO_CHAT_WELCOME_TEXT, {
                 parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [isNewGroup ? [] : [this.EXAMPLES_BUTTON]],
+                },
             })
                 .catch(this.handleSendMessageError);
+            if (!isNewGroup)
+                return;
+            await this.sendExamples(ctx);
         });
         this.bot.on(message('left_chat_member'), ({ chat, message }) => {
             this.handleDelete(chat.id, message.left_chat_member);
@@ -340,7 +349,10 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
                     .catch(this.handleSendMessageError);
                 return;
             }
-            const field = ctx.message.text.split(' ')[1];
+            let field = ctx.message.text.split(' ')[1];
+            if (field) {
+                field = field.startsWith('@') ? field.slice(1) : field;
+            }
             if (!field) {
                 console.log('[add_to] Empty mention', ctx.message.text);
                 this.metricsService.customMentionsActionCounter.inc({
@@ -385,7 +397,7 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
                 const inlineKeyboard = [[this.BUY_MENTIONS_BUTTON]];
                 await ctx
                     .reply(`🚫 You have been reached a Free limit.
-Need more? Try removing useless mentions using the /mentions and /delete_mention commands.
+Need more? Try removing useless mentions using the /mention and /delete_mention commands.
 <strong>Or you can buy in our store, this is an unlimited quantity, no subscriptions.</strong>
 `, {
                     parse_mode: 'HTML',
@@ -396,14 +408,15 @@ Need more? Try removing useless mentions using the /mentions and /delete_mention
                     .catch(this.handleSendMessageError);
                 return;
             }
-            const successStr = `➕ In mention <strong>${field}</strong> added: ${successMentions.join(', ')}`;
+            const successStr = `➕ In mention <strong>${field}</strong> added: ${successMentions.join(', ')}
+✅ Now you can call them <code>@${field}</code>`;
             console.log('[add_to] Created', ctx.message.chat.id, field);
             this.metricsService.customMentionsActionCounter.inc({
                 chatId: ctx.message.chat.id.toString(),
                 action: 'mentionAddTo.added',
             });
             await ctx
-                .reply(`${successStr}\n${unsuccessStr}`, {
+                .reply(`${successStr}\n\n${unsuccessStr}`, {
                 disable_notification: true,
                 parse_mode: 'HTML',
             })
@@ -420,7 +433,10 @@ Need more? Try removing useless mentions using the /mentions and /delete_mention
                     .catch(this.handleSendMessageError);
                 return;
             }
-            const field = ctx.message.text.split(' ')[1];
+            let field = ctx.message.text.split(' ')[1];
+            if (field) {
+                field = field.startsWith('@') ? field.slice(1) : field;
+            }
             if (!field) {
                 console.log('[delete_from] Empty mention', ctx.message.text);
                 this.metricsService.customMentionsActionCounter.inc({
@@ -490,7 +506,10 @@ Contact us via support chat from /help`, {
                     .catch(this.handleSendMessageError);
                 return;
             }
-            const field = ctx.message.text.split(' ')[1];
+            let field = ctx.message.text.split(' ')[1];
+            if (field) {
+                field = field.startsWith('@') ? field.slice(1) : field;
+            }
             if (!field) {
                 console.log('[delete_mention] Empty mention', ctx.message.text);
                 this.metricsService.customMentionsActionCounter.inc({
@@ -525,7 +544,7 @@ Contact us via support chat from /help`, {
                 action: 'mentionDelete.noMention',
             });
             await ctx
-                .reply(`🤷‍♂️ There is no mentions with that pattern. Try again or see all your mentions via /mentions`, {
+                .reply(`🤷‍♂️ There is no mentions with that pattern. Try again or see all your mentions via /mention`, {
                 parse_mode: 'HTML',
             })
                 .catch(this.handleSendMessageError);
@@ -576,16 +595,19 @@ Contact us via support chat from /help`, {
                 .reply(HELP_COMMAND_TEXT, {
                 reply_to_message_id: ctx.message.message_id,
                 parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [[this.EXAMPLES_BUTTON]],
+                },
             })
                 .catch(this.handleSendMessageError);
         });
     }
     registerHandleMessage() {
         this.bot.on(message('text'), async (ctx) => {
-            const { message: { from, text, message_id: messageId }, chat: { id: chatId }, } = ctx;
+            const { message: { from, text }, chat: { id: chatId }, } = ctx;
             const introduceBtn = {
                 callback: '/intro_custom_mentions',
-                text: '💥 Introduce @custom_mentions!',
+                text: '⚡ Introduce @custom_mentions!',
             };
             const reply_markup = {
                 inline_keyboard: [
@@ -599,19 +621,7 @@ Contact us via support chat from /help`, {
             };
             const START_TIME = Date.now();
             if (!isChatGroup(chatId)) {
-                console.log(`[DIRECT_MSG] Direct message from ${ctx.message.text}`, from.username);
-                await ctx
-                    .reply(`👥 Add me to your group, here is example @all mention for you (but also you can use @custom_mentions with me!):`, {
-                    parse_mode: 'HTML',
-                })
-                    .catch(this.handleSendMessageError);
-                const startText = `🔊 All from <a href="tg://user?id=${from.id}">${from.username}</a>:`;
-                await ctx
-                    .reply(`${startText} @${from.username}`, {
-                    reply_to_message_id: messageId,
-                    parse_mode: 'HTML',
-                })
-                    .catch(this.handleSendMessageError);
+                await this.handleDirectMessage(ctx, text, ctx.message.text === '/start').catch(this.handleSendMessageError);
                 return;
             }
             await this.userRepository.addUsers(chatId, [from]);
@@ -656,6 +666,8 @@ Someone should write something (read more /help).
             await this.mentionPeople(ctx, usernames, {
                 includePay,
                 includePromo: introduceBtn,
+                afterMessageText: `
+\n💡 Try also: <code>@all</code> or <code>@your_custom_mention</code> inside your message`,
             }).catch(this.handleSendMessageError);
             const END_TIME = Date.now();
             const EXECUTE_TIME = END_TIME - START_TIME;
@@ -672,10 +684,8 @@ Someone should write something (read more /help).
         const chatId = ctx.chat?.id;
         if (!chatId)
             return;
-        const messageId = ctx.message?.message_id;
-        const prefix = !messageId && options.includeFieldIfNoMessage
-            ? `${options.includeFieldIfNoMessage}: `
-            : '';
+        const messageId = options.overrideReplyMessageId ?? ctx.message?.message_id;
+        const prefix = options.includeField ? `${options.includeField}: ` : '';
         const promises = new Array();
         const chunkSize = 5; // Telegram limitations for mentions per message
         const chunksCount = 19; // Telegram limitations for messages
@@ -738,6 +748,9 @@ Someone should write something (read more /help).
                                 lastStr +
                                     ', ' +
                                     brokenUsers.map((username) => `@${username}`).join(', ');
+                        }
+                        if (options.afterMessageText) {
+                            lastStr = `${lastStr} ${options.afterMessageText}`;
                         }
                         const buttons = [];
                         if (options.includePay) {
@@ -843,13 +856,13 @@ Someone should write something (read more /help).
             source: 'other',
         });
         console.log('[mention] Mention', ctx.chat.id, field, usernamesToMention.length);
-        let fieldWithMentioner = `${field}`;
+        let fieldWithMentioner = `<code>@${field}</code>`;
         if (ctx.from) {
             fieldWithMentioner += ` from <a href="tg://user?id=${ctx.from.id}">${ctx.from.username}</a>`;
         }
         await this.mentionPeople(ctx, usernamesToMention, {
             includePay: usernamesToMention.length >= this.INCLUDE_PAY_LIMIT,
-            includeFieldIfNoMessage: fieldWithMentioner,
+            includeField: fieldWithMentioner,
         }).catch(this.handleSendMessageError);
     }
     async onlyAdminActionGuard(ctx, action) {
@@ -902,5 +915,63 @@ Someone should write something (read more /help).
         ];
         console.log(`[is_allowed] Check ${member.status} for user ${userId}`);
         return allowed.includes(member.status);
+    }
+    async handleDirectMessage(ctx, text, isStart) {
+        const { message: { from }, } = ctx;
+        console.log(`[DIRECT_MSG] Direct message from ${text}`, from.username, isStart);
+        await ctx.reply(`👋 Hi!
+🤖 This is a bot to improve your chatting experience, just like Slack or other team messengers.
+
+1. You can mention /all (or tag <code>@all</code>) chat participants with one command. 
+2. Also you can create your own custom mentions and use them. For example <code>Hello, @frontend_dev</code>
+
+❗️ But remember that I work only in <strong>groups</strong> and <strong>super groups</strong> (with additional permissions)
+
+💫 <strong>Add me to your group and let the magic begin!</strong>`, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [isStart ? [] : [this.EXAMPLES_BUTTON]],
+            },
+        });
+        if (!isStart)
+            return;
+        this.metricsService.commandsCounter.inc({
+            command: '/start',
+        });
+        await this.sendExamples(ctx);
+    }
+    async sendExamples(ctx) {
+        this.metricsService.commandsCounter.inc({
+            command: 'examples',
+        });
+        await ctx.reply(`👇 Below are some examples for you:`, {
+            parse_mode: 'HTML',
+        });
+        const ctxV3 = await ctx.reply('Hello @all');
+        const names = ['@bill', '@ivan', '@kate'];
+        await this.mentionPeople(ctx, names, {
+            includePay: false,
+            overrideReplyMessageId: ctxV3.message_id,
+        });
+        const field = 'friends';
+        await ctx.reply(`/add_to ${field} @bill @ivan @kate`, {
+            parse_mode: 'HTML',
+        });
+        const successStr = `➕ In mention <strong>${field}</strong> added: ${names.join(', ')}
+✅ Now you can call them <code>@${field}</code>`;
+        await ctx.reply(`${successStr}`, {
+            disable_notification: true,
+            parse_mode: 'HTML',
+        });
+        let fieldWithMentioner = `<code>@${field}</code>`;
+        if (ctx.from) {
+            fieldWithMentioner += ` from <a href="tg://user?id=${ctx.from.id}">${ctx.from.username}</a>`;
+        }
+        const ctxV2 = await ctx.reply(`Hello @${field}`);
+        await this.mentionPeople(ctx, names, {
+            includePay: false,
+            includeField: fieldWithMentioner,
+            overrideReplyMessageId: ctxV2.message_id,
+        });
     }
 }

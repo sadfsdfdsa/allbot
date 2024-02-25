@@ -1,10 +1,10 @@
-const EMPTY_TEXT = `⚠️ Error while parsing mention (see all with /mentions). Please use:\n`;
+const EMPTY_TEXT = `⚠️ Error while parsing mention (see all with /mention). Please use:\n`;
 export const NEW_MENTION_EXAMPLE = `<code>/add_to NEW_MENTION @user @user2</code>`;
 export const EMPTY_MENTION_TEXT = `${EMPTY_TEXT}<code>/mention some_existing_mention</code>`;
 export const EMPTY_DELETE_FROM_MENTION_TEXT = `${EMPTY_TEXT}<code>/delete_from MENTION @user @user2</code>`;
 export const EMPTY_DELETE_MENTION_TEXT = `${EMPTY_TEXT}<code>/delete_mention MENTION</code>`;
 export const NOT_EXISTED_MENTION_TEXT = `⚠️ Not existed or empty mention.
-\nSee all via /mentions or create new one:\n${NEW_MENTION_EXAMPLE}`;
+\nSee all via /mention or create new one:\n${NEW_MENTION_EXAMPLE}`;
 export const CLEAN_UP_EMPTY_MENTION_TEXT = `🧹 This is an empty mention. We clean it up.`;
 export const DONATE_COMMAND_TEXT = `
 🙌 This bot is free to use, but hosting and database are paid options for project. So, if you have opportunity to support, it will be very helpful! 🙌
@@ -25,11 +25,17 @@ export const PRIVACY_COMMAND_TEXT = `
 🧑‍💻 You can view the project's codebase using Github -  https://github.com/sadfsdfdsa/allbot (also can Star or Fork the Bot project).
 <strong>❗️ Be careful when using unfamiliar bots in your communication, it can be dangerous!</strong>
 `;
+const CUSTOM_MENTIONS_CHEATSHEET = `<code>/add_to TEAM_1 @user @user2</code> - add members to custom mention
+<code>Your message @TEAM_1</code> - instant tag without any commands inside the text
+<code>/mention TEAM_1</code> - mention part of your group
+<code>/mention</code> - see all of your custom mentions
+<code>/delete_from TEAM_1 @user @user2</code> - delete members from custom mention
+<code>/delete_mention TEAM_1</code> - delete entire custom mention`;
 export const HELP_COMMAND_TEXT = `
 <b>❔ How can I mention chat participants?</b>
 You can mention all chat participants using /all or by mentioning <code>@all</code> anywhere in the message.
 For example: <i>Wanna play some games @all?</i>.
-Or you can use custom mentions, see cheat sheet below.
+Or you can use <u>custom mentions</u>, see cheat sheet below.
 
 <b>❔ Why does the bot give out so many messages?</b>
 Telegram has a limit on mentions - only 5 users receive notifications per message.
@@ -49,12 +55,7 @@ Try to add more than 3 mentions, click to button for pay link, then pay with fil
 /privacy - info about personal data usage and codebase of the Bot 🔐
 
 <strong>👀 Custom mentions cheat sheet:</strong>
-<code>/add_to TEAM_1 @user @user2</code> - add members to custom mention
-<code>Your message @TEAM_1</code> - instant tag without any commands inside the text
-<code>/mention TEAM_1</code> - mention part of your group
-<code>/delete_from TEAM_1 @user @user2</code> - delete members from custom mention
-<code>/delete_mention TEAM_1</code> - delete entire custom mention
-<code>/mentions</code> - see all of your customs mentions
+${CUSTOM_MENTIONS_CHEATSHEET}
 
 🐛 <strong>Found a bug? Please, report it to us!</strong>
 
@@ -63,15 +64,14 @@ Try to add more than 3 mentions, click to button for pay link, then pay with fil
 `;
 export const ADDED_TO_CHAT_WELCOME_TEXT = `
 👋 Hello everyone!
-🤖 This is a bot to improve your experience, just like Slack or other instant messengers. 
+🤖 This is a bot to improve your chatting experience, just like Slack or other team messengers. 
 
-You can mention /all (or tag @all) chat participants with one command. 
-Also you can create your own custom mentions and use them. For example <code>Hello, @frontend_dev</code>
-See /help for more info about custom mentions.
+1. You can mention /all (or tag <code>@all</code>) chat participants with one command. 
+2. Also you can create your own custom mentions and use them. For example <code>Hello, @frontend_dev</code>
 
-❔ But remember that I add each person to the mention only after his first message after I joined, so if you don’t see yourself in my mentions, at least write '+' in this chat. Read more with /help.
-✍️ You can help to improve the Bot by /donate for servers.
-⚡ Want to see updates first, send feature request to the developers? Join the chat: https://t.me/allsuperior_chat !
+❗️ But remember that I add each person to the mention only after his first message after I joined, so if you don’t see yourself in my mentions, at least write <code>+</code> in this chat. Read more with /help.
+
+⚡ Want to see updates first or send feature request to the developers? Join the chat: https://t.me/allsuperior_chat !
 `;
 export const INTRODUCE_CUSTOM_MENTIONS_TEXT = `
 💥 <strong>Custom mentions</strong>
@@ -81,12 +81,7 @@ export const INTRODUCE_CUSTOM_MENTIONS_TEXT = `
 
 You can create up to <strong>3</strong> custom mentions, add and delete users from them (click to example for copying):
 
-<code>/add_to TEAM_1 @user @user2</code> - add members to custom mention
-<code>Your message @TEAM_1</code> - instant tag without any commands inside the text
-<code>/mention TEAM_1</code> - mention part of your group
-<code>/delete_from TEAM_1 @user @user2</code> - delete members from custom mention
-<code>/delete_mention TEAM_1</code> - delete entire custom mention
-<code>/mentions</code> - see all of your customs mentions
+${CUSTOM_MENTIONS_CHEATSHEET}
 
 More info in /help and our chat https://t.me/allsuperior_chat. 
 `;
@@ -104,4 +99,4 @@ export const ONLY_ADMIN_ACTION_TEXT = `
 `;
 export const GET_MENTIONS_TEXT = `🫂 Custom mentions in the group:
 
-⚡ Now you can write like this (<code>Hi @custom_mention!</code>)`;
+⚡ Now you can write like this: <code>Hi @custom_mention!</code>`;

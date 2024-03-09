@@ -136,17 +136,17 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
         this.bot.on(message('new_chat_members'), async (ctx) => {
             const { chat, message } = ctx;
             this.handleAddMembers(chat.id, message.new_chat_members);
-            const isNewGroup = this.tryDetectBotAddOrDelete(chat.id, message.new_chat_members, 'add');
+            const isBotAddingToGroup = this.tryDetectBotAddOrDelete(chat.id, message.new_chat_members, 'add');
+            if (!isBotAddingToGroup)
+                return;
             await ctx
                 .reply(ADDED_TO_CHAT_WELCOME_TEXT, {
                 parse_mode: 'HTML',
                 reply_markup: {
-                    inline_keyboard: [isNewGroup ? [] : [this.EXAMPLES_BUTTON]],
+                    inline_keyboard: [[this.EXAMPLES_BUTTON]],
                 },
             })
                 .catch(this.handleSendMessageError);
-            if (!isNewGroup)
-                return;
             await this.sendExamples(ctx);
         });
         this.bot.on(message('left_chat_member'), ({ chat, message }) => {

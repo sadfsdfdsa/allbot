@@ -8,7 +8,6 @@ export class UserRepository {
         this.cache = cache;
         console.log('[LAUNCH] Init User repository');
     }
-    // TODO improve tests
     async addUsers(chatId, users) {
         const usernamesById = {};
         users.forEach((user) => {

@@ -27,6 +27,7 @@ export class PaymentsRepository {
         this.metrics.dbOpsCounter.inc({
             action: 'payments.setGroupLimit',
         });
+        console.log('[paymentsRepository] set limit for chat', limit, chatId);
     }
     getPayloadForInvoice(chatId) {
         return `invoice:${chatId}`;

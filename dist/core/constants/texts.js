@@ -1,4 +1,4 @@
-import { TELEGRAM_STARS_PRICE } from "./limits.js";
+import { CUSTOM_MENTIONS_PER_GROUP_LIMIT, TELEGRAM_STARS_PRICE } from "./limits.js";
 const EMPTY_TEXT = `⚠️ Error while parsing mention (see all with /mention). Please use:\n`;
 export const NEW_MENTION_EXAMPLE = `<code>/add_to NEW_MENTION @user @user2</code>`;
 export const EMPTY_MENTION_TEXT = `${EMPTY_TEXT}<code>/mention some_existing_mention</code>`;
@@ -58,7 +58,7 @@ export const INTRODUCE_CUSTOM_MENTIONS_TEXT = `
 <i>Need custom tags for part of group members?</i>
 <strong>Now it is available for all!</strong>
 
-You can create up to <strong>3</strong> custom mentions, add and delete users from them (click to example for copying):
+You can create custom mentions, add and delete users from them (click to example for copying):
 
 ${CUSTOM_MENTIONS_CHEATSHEET}
 
@@ -68,7 +68,7 @@ export const ALREADY_UNLIMITED = `
 😎 <strong>You have unlimited mentions, thank you for buying!</strong>
 `;
 export const NEED_TO_BUY_UNLIMITED = `
-😎 <strong>Need more than 3? Unlimited Forever for ${TELEGRAM_STARS_PRICE} Telegram Stars.</strong>
+⭐️ <strong>You can use up to ${CUSTOM_MENTIONS_PER_GROUP_LIMIT}, need more? Buy Unlimited Forever for ${TELEGRAM_STARS_PRICE} Telegram Stars.</strong>
 `;
 export const SETTINGS_TEXT = `⚙️ <strong>Settings (can be edited only by group admins):</strong>`;
 export const ONLY_ADMIN_SETTINGS_TEXT = '🛑 Only admins';

@@ -59,7 +59,7 @@ export class Bot {
 
   private readonly BUY_MENTIONS_BUTTON = {
     callback_data: '/buy',
-    text: '⭐️ Buy Unlimited using Telegram Stars',
+    text: ' Buy ⭐️Unlimited using Telegram Stars',
   }
 
   private isListening = false

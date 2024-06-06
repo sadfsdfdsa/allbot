@@ -20,7 +20,7 @@ export class Bot {
     };
     BUY_MENTIONS_BUTTON = {
         callback_data: '/buy',
-        text: '⭐️ Buy Unlimited using Telegram Stars',
+        text: ' Buy ⭐️Unlimited using Telegram Stars',
     };
     isListening = false;
     activeQuery = new Set();

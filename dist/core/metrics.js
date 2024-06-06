@@ -1,7 +1,6 @@
 import { Registry, Counter, collectDefaultMetrics, Histogram, } from 'prom-client';
 const KEY_FOR_TIMESTAMP = '!TIMESTAMP';
 const KEY_FOR_COUNTER = '!COUNTER';
-const KEY_FOR_PAYMENTS = '!PAYMENTS';
 export class MetricsService {
     db;
     registry;
@@ -107,9 +106,6 @@ export class MetricsService {
         })
             .catch(console.error);
         this.db.hIncrBy(KEY_FOR_COUNTER, key, 1).catch(console.error);
-    }
-    updateLatestPaymentsCall(key) {
-        this.db.hIncrBy(KEY_FOR_PAYMENTS, key, 1).catch(console.error);
     }
     async getMetrics() {
         const metrics = await this.registry.metrics();

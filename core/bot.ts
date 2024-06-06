@@ -22,7 +22,6 @@ import {
   ADDED_TO_CHAT_WELCOME_TEXT,
   ALREADY_UNLIMITED,
   CLEAN_UP_EMPTY_MENTION_TEXT,
-  DONATE_COMMAND_TEXT,
   EMPTY_DELETE_FROM_MENTION_TEXT,
   EMPTY_DELETE_MENTION_TEXT,
   GET_MENTIONS_TEXT,
@@ -32,12 +31,12 @@ import {
   NEW_MENTION_EXAMPLE,
   NOT_EXISTED_MENTION_TEXT,
   ONLY_ADMIN_ACTION_TEXT,
-  PRIVACY_COMMAND_TEXT,
   SETTINGS_TEXT,
 } from './constants/texts.js'
 import { LIMITS_MENTION_FOR_ADDING_PAY } from './constants/limits.js'
 import { PaymentsRepository } from './paymentsRepository.js'
 import { SettingsAction, SettingsRepository } from './settingsRepository.js'
+import { BASE_INVOICE } from './constants/const.js'
 
 type UniversalMessageOrActionUpdateCtx = NarrowedContext<
   Context,
@@ -53,23 +52,14 @@ export class Bot {
 
   private readonly EMOJI_SET = ['👋', '🫰']
 
-  private readonly DONATE_LINK = 'https://www.buymeacoffee.com/karanarqq'
-
-  private readonly BUY_LINK = 'https://www.buymeacoffee.com/karanarqq/e/190652'
-
-  private readonly DONATE_URL_BUTTON = {
-    url: this.DONATE_LINK,
-    text: '☕️ Buy me a coffee',
-  }
-
   private readonly EXAMPLES_BUTTON = {
     callback_data: '/examples',
     text: '🤔 Show examples',
   }
 
   private readonly BUY_MENTIONS_BUTTON = {
-    url: this.BUY_LINK,
-    text: '🔥 Buy Unlimited mentions',
+    callback_data: '/buy',
+    text: '⭐️ Buy Unlimited using Telegram Stars',
   }
 
   private isListening = false
@@ -124,17 +114,13 @@ export class Bot {
         description: 'Help information',
       },
       {
-        command: 'donate',
-        description: 'Support the project to pay for servers and new features',
+        command: 'buy',
+        description: 'Get Unlimited custom mentions. Forever.',
       },
     ])
 
-    this.registerDonateCommand()
-    this.registerPrivacyCommand()
+    this.registerBuyCommandAndActions()
     this.registerHelpCommand()
-
-    this.registerSettingsChangeAction()
-
     this.registerSettingsCommand()
     this.registerMentionCommand()
     this.registerGetAllMentionCommand()
@@ -145,17 +131,7 @@ export class Bot {
     // Should be last for not overriding commands below
     this.registerHandleMessage()
 
-    this.bot.action('/donate', async (ctx) => {
-      if (!ctx.chat?.id) return
-
-      const msg = this.handleDonateCommand(ctx.chat?.id, 'donate.btn')
-
-      await ctx
-        .reply(msg, {
-          parse_mode: 'HTML',
-        })
-        .catch(this.handleSendMessageError)
-    })
+    this.registerSettingsChangeAction()
 
     this.bot.action('/examples', async (ctx) => {
       if (!ctx.chat?.id) return
@@ -284,19 +260,6 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${
     }
 
     return true
-  }
-
-  private handleDonateCommand(chatId: Chat['id'], command = 'donate'): string {
-    console.log('[PAYMENT] Send payments info')
-
-    this.metricsService.commandsCounter.inc({
-      chatId: chatId.toString(),
-      command,
-    })
-
-    this.metricsService.updateLatestPaymentsCall(`${chatId}`)
-
-    return DONATE_COMMAND_TEXT
   }
 
   private registerSettingsChangeAction(): void {
@@ -829,46 +792,61 @@ Contact us via support chat from /help`,
     })
   }
 
-  private registerDonateCommand(): void {
-    this.bot.command('donate', async (ctx) => {
-      const msg = this.handleDonateCommand(ctx.chat.id)
+  private registerBuyCommandAndActions(): void {
+    const sendInvoice = async (
+      ctx: UniversalMessageOrActionUpdateCtx
+    ): Promise<void> => {
+      if (!ctx.chat?.id) return
 
-      const hasUnlimited = this.paymentsRepository.getHasGroupUnlimited(
-        ctx.chat.id
-      )
-
-      const inlineKeyboard = [
-        [this.DONATE_URL_BUTTON],
-        hasUnlimited ? [] : [this.BUY_MENTIONS_BUTTON],
-      ]
-
-      await ctx
-        .reply(msg, {
-          reply_to_message_id: ctx.message.message_id,
-          parse_mode: 'HTML',
-          reply_markup: {
-            inline_keyboard: inlineKeyboard,
-          },
-        })
-        .catch(this.handleSendMessageError)
-    })
-  }
-
-  private registerPrivacyCommand(): void {
-    this.bot.command('privacy', async (ctx) => {
-      console.log('[PRIVACY] Send privacy policy')
-
+      console.log('[buy] Start buying', ctx.chat.id)
       this.metricsService.commandsCounter.inc({
         chatId: ctx.chat.id.toString(),
-        command: 'privacy',
+        command: 'buy',
       })
 
       await ctx
-        .reply(PRIVACY_COMMAND_TEXT, {
-          reply_to_message_id: ctx.message.message_id,
-          parse_mode: 'HTML',
+        .sendInvoice({
+          ...BASE_INVOICE,
+          payload: this.paymentsRepository.getPayloadForInvoice(ctx.chat.id),
         })
         .catch(this.handleSendMessageError)
+    }
+
+    this.bot.command('buy', async (ctx) => {
+      await sendInvoice(ctx)
+    })
+
+    this.bot.action('/buy', async (ctx) => {
+      await sendInvoice(ctx)
+    })
+
+    this.bot.on('pre_checkout_query', async (ctx) => {
+      console.log('[buy] pre_checkout_query', ctx.from)
+      await ctx.answerPreCheckoutQuery(true).catch(this.handleSendMessageError)
+    })
+
+    this.bot.on('successful_payment', async (ctx) => {
+      const payload = ctx.update.message.successful_payment.invoice_payload
+      const chatId =
+        this.paymentsRepository.getParsedChatFromInvoicePayload(payload)
+      if (!chatId) {
+        console.error(
+          '[buy] Something wrong with parsed data: ',
+          ctx.chat.id,
+          ctx.update.message.successful_payment
+        )
+        return
+      }
+
+      console.log('[buy] successful_payment', ctx.chat.id)
+      this.metricsService.commandsCounter.inc({
+        chatId: ctx.chat.id.toString(),
+        command: 'successful_payment',
+      })
+
+      await this.paymentsRepository.setGroupLimit(chatId, 'unlimited')
+
+      await ctx.sendMessage('You successfully upgraded to Unlimited!')
     })
   }
 
@@ -1126,7 +1104,7 @@ Someone should write something (read more /help).
             const buttons: InlineKeyboardButton[] = []
 
             if (options.includePay) {
-              buttons.push(this.DONATE_URL_BUTTON)
+              buttons.push(this.BUY_MENTIONS_BUTTON)
             }
 
             if (options.includePromo) {

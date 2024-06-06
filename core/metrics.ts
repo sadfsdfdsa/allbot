@@ -8,7 +8,6 @@ import { RedisClientType } from 'redis'
 
 const KEY_FOR_TIMESTAMP = '!TIMESTAMP'
 const KEY_FOR_COUNTER = '!COUNTER'
-const KEY_FOR_PAYMENTS = '!PAYMENTS'
 
 export class MetricsService {
   private readonly registry: Registry
@@ -146,10 +145,6 @@ export class MetricsService {
       .catch(console.error)
 
     this.db.hIncrBy(KEY_FOR_COUNTER, key, 1).catch(console.error)
-  }
-
-  public updateLatestPaymentsCall(key: string): void {
-    this.db.hIncrBy(KEY_FOR_PAYMENTS, key, 1).catch(console.error)
   }
 
   public async getMetrics(): Promise<{

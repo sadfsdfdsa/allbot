@@ -1,3 +1,5 @@
+import { TELEGRAM_STARS_PRICE } from "./limits.js"
+
 const EMPTY_TEXT = `⚠️ Error while parsing mention (see all with /mention). Please use:\n`
 
 export const NEW_MENTION_EXAMPLE = `<code>/add_to NEW_MENTION @user @user2</code>`
@@ -12,27 +14,6 @@ export const NOT_EXISTED_MENTION_TEXT = `⚠️ Not existed or empty mention.
 \nSee all via /mention or create new one:\n${NEW_MENTION_EXAMPLE}`
 
 export const CLEAN_UP_EMPTY_MENTION_TEXT = `🧹 This is an empty mention. We clean it up.`
-
-export const DONATE_COMMAND_TEXT = `
-🙌 This bot is free to use, but hosting and database are paid options for project. So, if you have opportunity to support, it will be very helpful! 🙌
-
-1️⃣<strong>Support via USDT-TRC20: <code>TJyEa6p3HvAHz34gn7hZHYNwY65iHryu3w</code></strong>👈
-
-2️⃣<strong>Support via USDT-ETH: <code>0x7f49e01c13fE782aEB06Dc35a37d357b955b67B0</code></strong>👈
-
-3️⃣<strong>Support via BTC: <code>bc1qgmq6033fnte2ata8ku3zgvj0n302zvr9cexcng</code></strong>👈
-
-Thank you for using and supporting us! ❤️
-`
-
-export const PRIVACY_COMMAND_TEXT = `
-🔐 Are you concerned about your security and personal data? <strong>This is right!</strong>
-✅ What do we use? Identifiers of your groups to store data about participants in them: usernames and identifiers to correctly call all users of the group.
-✅ All data is transmitted only via encrypted channels and is not used for other purposes.
-✅ We don't read your messages, don't log data about you in public systems and 3th party services except safe hosting and database.
-🧑‍💻 You can view the project's codebase using Github -  https://github.com/sadfsdfdsa/allbot (also can Star or Fork the Bot project).
-<strong>❗️ Be careful when using unfamiliar bots in your communication, it can be dangerous!</strong>
-`
 
 const CUSTOM_MENTIONS_CHEATSHEET = `<code>/add_to TEAM_1 @user @user2</code> - add members to custom mention
 <code>Your message @TEAM_1</code> - instant tag without any commands inside the text
@@ -59,10 +40,7 @@ You should Promote it and permit "Manage Topics", or use Bot not in "Closed" Top
 <b>❔ How to buy unlimited custom mentions?</b>
 Try to add more than 3 mentions, click to button for pay link, then pay with fill your group name or contact us in chat https://t.me/allsuperior_chat.
 
-<strong>👀 Commands:</strong>
 /settings - change settings to enable/disable mentions for users without administrator rights ⚙️
-/donate - help the project pay for servers 🫰
-/privacy - info about personal data usage and codebase of the Bot 🔐
 
 <strong>👀 Custom mentions cheat sheet:</strong>
 ${CUSTOM_MENTIONS_CHEATSHEET}
@@ -103,7 +81,7 @@ export const ALREADY_UNLIMITED = `
 `
 
 export const NEED_TO_BUY_UNLIMITED = `
-😎 <strong>Need more than 3? Unlimited Forever for 5$.</strong>
+😎 <strong>Need more than 3? Unlimited Forever for ${TELEGRAM_STARS_PRICE} Telegram Stars.</strong>
 `
 
 export const SETTINGS_TEXT = `⚙️ <strong>Settings (can be edited only by group admins):</strong>`

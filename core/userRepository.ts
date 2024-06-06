@@ -12,7 +12,6 @@ export class UserRepository {
     console.log('[LAUNCH] Init User repository')
   }
 
-  // TODO improve tests
   public async addUsers(chatId: Chat['id'], users: User[]): Promise<void> {
     const usernamesById: Record<string, string> = {}
     users.forEach((user) => {

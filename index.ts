@@ -10,8 +10,6 @@ import { PaymentsRepository } from './core/paymentsRepository.js'
 import { SettingsRepository } from './core/settingsRepository.js'
 
 const main = async (): Promise<void> => {
-  const paymentsRepository = new PaymentsRepository(process.env.MENTIONS_LIMIT)
-
   const dbClient = await createDB(process.env.REDIS_URI)
 
   const metricsService = new MetricsService(dbClient)
@@ -19,6 +17,9 @@ const main = async (): Promise<void> => {
   const server = new Server(metricsService, process.env.PORT)
 
   const cache = new CacheService(metricsService, 2000)
+
+  const paymentsRepository = new PaymentsRepository(dbClient, metricsService)
+  await paymentsRepository.loadLimits()
 
   const settingsRepository = new SettingsRepository(dbClient, metricsService)
 

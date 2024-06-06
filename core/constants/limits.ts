@@ -1,3 +1,5 @@
 export const LIMITS_MENTION_FOR_ADDING_PAY = 10
 
 export const CUSTOM_MENTIONS_PER_GROUP_LIMIT = 3
+
+export const TELEGRAM_STARS_PRICE = 200

@@ -798,6 +798,21 @@ Contact us via support chat from /help`,
     ): Promise<void> => {
       if (!ctx.chat?.id) return
 
+      const hasUnlimited = this.paymentsRepository.getHasGroupUnlimited(
+        ctx.chat.id
+      )
+      if (hasUnlimited) {
+        console.log('[buy] Already unlimited', ctx.chat.id)
+
+        await ctx
+          .sendMessage(ALREADY_UNLIMITED, {
+            parse_mode: 'HTML',
+          })
+          .catch(this.handleSendMessageError)
+
+        return
+      }
+
       console.log('[buy] Start buying', ctx.chat.id)
       this.metricsService.commandsCounter.inc({
         chatId: ctx.chat.id.toString(),
@@ -846,7 +861,11 @@ Contact us via support chat from /help`,
 
       await this.paymentsRepository.setGroupLimit(chatId, 'unlimited')
 
-      await ctx.sendMessage('You successfully upgraded to Unlimited!')
+      await ctx
+        .sendMessage(ALREADY_UNLIMITED, {
+          parse_mode: 'HTML',
+        })
+        .catch(this.handleSendMessageError)
     })
   }
 

@@ -24,6 +24,8 @@ export class MentionRepository {
         if (!this.mentionsByChatId[chatId])
             return undefined;
         const mentions = [...this.mentionsByChatId[chatId]];
+        // TODO fix matching bug
+        // need to use split(' ') and matching
         return mentions.find((item) => msg.includes(`@${item}`));
     }
     async checkIfMentionExists(chatId, mention) {

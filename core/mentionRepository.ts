@@ -37,6 +37,8 @@ export class MentionRepository {
 
     const mentions = [...this.mentionsByChatId[chatId]]
 
+    // TODO fix matching bug
+    // need to use split(' ') and matching
     return mentions.find((item) => msg.includes(`@${item}`))
   }
 

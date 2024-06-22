@@ -934,10 +934,6 @@ Contact us via support chat from /help`,
         text
       )
       if (customMention) {
-        this.metricsService.customMentionsCounter.inc({
-          chatId: ctx.chat.id.toString(),
-          source: 'messageHandler',
-        })
         await this.sendCustomMention(ctx, customMention, 'message')
         return
       }

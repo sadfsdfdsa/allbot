@@ -624,10 +624,6 @@ Contact us via support chat from /help`, {
             await this.userRepository.addUsers(chatId, [from]);
             const customMention = this.mentionRepository.getMentionForMsg(chatId, text);
             if (customMention) {
-                this.metricsService.customMentionsCounter.inc({
-                    chatId: ctx.chat.id.toString(),
-                    source: 'messageHandler',
-                });
                 await this.sendCustomMention(ctx, customMention, 'message');
                 return;
             }

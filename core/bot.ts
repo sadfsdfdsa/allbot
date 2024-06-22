@@ -147,7 +147,9 @@ export class Bot {
 
       console.log('[mention-action]', field, ctx.chat.id, ctx.from)
 
-      this.sendCustomMention(ctx, field).catch(this.handleSendMessageError)
+      this.sendCustomMention(ctx, field, 'action').catch(
+        this.handleSendMessageError
+      )
     })
 
     this.bot.action('/intro_custom_mentions', async (ctx) => {
@@ -411,7 +413,7 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${
         return
       }
 
-      this.sendCustomMention(ctx, field)
+      this.sendCustomMention(ctx, field, 'command')
     })
   }
 
@@ -936,7 +938,7 @@ Contact us via support chat from /help`,
           chatId: ctx.chat.id.toString(),
           source: 'messageHandler',
         })
-        await this.sendCustomMention(ctx, customMention)
+        await this.sendCustomMention(ctx, customMention, 'message')
         return
       }
 
@@ -1207,7 +1209,8 @@ Someone should write something (read more /help).
 
   private async sendCustomMention(
     ctx: UniversalMessageOrActionUpdateCtx,
-    field: string
+    field: string,
+    source: 'message' | 'command' | 'action'
   ): Promise<void> {
     if (!ctx.chat?.id) return
 
@@ -1276,7 +1279,7 @@ Someone should write something (read more /help).
 
     this.metricsService.customMentionsCounter.inc({
       chatId: ctx.chat.id.toString(),
-      source: 'other',
+      source,
     })
 
     console.log(

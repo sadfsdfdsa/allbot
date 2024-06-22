@@ -88,7 +88,11 @@ export class MentionRepository {
       action: 'addUsersToMention#hSet',
     })
 
-    this.mentionsByChatId[chatId]?.add(mention)
+    if (this.mentionsByChatId[chatId]) {
+      this.mentionsByChatId[chatId]?.add(mention)
+    } else {
+      this.mentionsByChatId[chatId] = new Set(mention)
+    }
 
     return true
   }

@@ -93,7 +93,7 @@ export class Bot {
             const data = ctx.update.callback_query.data;
             const field = data.replace('/mention-', '');
             console.log('[mention-action]', field, ctx.chat.id, ctx.from);
-            this.sendCustomMention(ctx, field).catch(this.handleSendMessageError);
+            this.sendCustomMention(ctx, field, 'action').catch(this.handleSendMessageError);
         });
         this.bot.action('/intro_custom_mentions', async (ctx) => {
             if (!ctx.chat?.id)
@@ -274,7 +274,7 @@ ${INTRODUCE_CUSTOM_MENTIONS_TEXT}${isUnlimitedGroup ? ALREADY_UNLIMITED : NEED_T
                     .catch(this.handleSendMessageError);
                 return;
             }
-            this.sendCustomMention(ctx, field);
+            this.sendCustomMention(ctx, field, 'command');
         });
     }
     registerGetAllMentionCommand() {
@@ -628,7 +628,7 @@ Contact us via support chat from /help`, {
                     chatId: ctx.chat.id.toString(),
                     source: 'messageHandler',
                 });
-                await this.sendCustomMention(ctx, customMention);
+                await this.sendCustomMention(ctx, customMention, 'message');
                 return;
             }
             const isCallAll = this.MENTION_COMMANDS.some((command) => text.includes(command));
@@ -808,7 +808,7 @@ Someone should write something (read more /help).
     handleSendMessageError(error, prefix = '') {
         console.error(prefix, error);
     }
-    async sendCustomMention(ctx, field) {
+    async sendCustomMention(ctx, field, source) {
         if (!ctx.chat?.id)
             return;
         const isAllowed = await this.onlyAdminActionGuard(ctx, 'useCustomMention');
@@ -850,7 +850,7 @@ Someone should write something (read more /help).
         }
         this.metricsService.customMentionsCounter.inc({
             chatId: ctx.chat.id.toString(),
-            source: 'other',
+            source,
         });
         console.log('[mention] Mention', ctx.chat.id, field, usernamesToMention.length);
         let fieldWithMentioner = `<code>@${field}</code>`;

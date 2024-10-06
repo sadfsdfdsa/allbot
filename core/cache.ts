@@ -45,8 +45,6 @@ export class CacheService {
     const arr = [...this.cachedChats.values()].map((set) => [...set]).flat()
     if (arr.length < this.MAX_CACHE_SIZE) return
 
-    this.metricsService.cacheCounter.reset()
-
     const date = new Date()
     this.metricsService.cacheClearingCounter.inc({
       time: date.toLocaleString('ru-RU', { timeZone: 'Asia/Yekaterinburg' }),

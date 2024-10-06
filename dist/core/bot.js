@@ -736,6 +736,10 @@ Someone should write something (read more /help).
                     return new Promise(async (resolve) => {
                         console.log('[ALL] Broken users:', brokenUsers.length);
                         let lastStr = str;
+                        /**
+                         * Max Telegram message length - so we need to split this message by chunks
+                         */
+                        const MAX_LENGTH = 4096;
                         if (brokenUsers.length) {
                             lastStr =
                                 lastStr +
@@ -759,13 +763,24 @@ Someone should write something (read more /help).
                             buttons,
                         ];
                         try {
-                            await ctx.reply(lastStr, {
-                                reply_to_message_id: withReply ? messageId : undefined,
-                                parse_mode: 'HTML',
-                                reply_markup: {
-                                    inline_keyboard: inlineKeyboard,
-                                },
+                            let arr = [];
+                            let currentStr = lastStr;
+                            while (currentStr.length >= MAX_LENGTH) {
+                                const firstPart = currentStr.slice(0, 4000);
+                                currentStr = currentStr.slice(4000);
+                                arr.push(firstPart);
+                            }
+                            const promises = [];
+                            arr.map((str) => {
+                                return ctx.reply(str, {
+                                    reply_to_message_id: withReply ? messageId : undefined,
+                                    parse_mode: 'HTML',
+                                    reply_markup: {
+                                        inline_keyboard: inlineKeyboard,
+                                    },
+                                });
                             });
+                            await Promise.all(promises);
                             resolve(null);
                         }
                         catch (error) {
